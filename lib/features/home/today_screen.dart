@@ -7,6 +7,7 @@ import 'package:be_kind/features/home/models/motivational_quote.dart';
 import 'package:be_kind/features/home/services/quote_library.dart';
 import 'package:be_kind/features/home/widgets/alternatives_sheet.dart';
 import 'package:be_kind/features/home/widgets/motivational_quote_card.dart';
+import 'package:be_kind/core/widgets/kindness_hero_illustration.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -136,10 +137,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           // Main Task Card
           if (activeTask != null)
             Container(
-              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(isDesktop ? 28 : 24),
+                border: Border.all(color: AppColors.line),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.ink.withValues(alpha: 0.06),
@@ -153,41 +154,50 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "TODAY'S KIND ACT",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.08 * 13,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentSoft,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          activeTask.category,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accentOnSoft,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(isDesktop ? 28 : 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Graphic Hero Illustration banner
+                    const KindnessHeroIllustration(height: 85),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "TODAY'S KIND ACT",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.08 * 13,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentSoft,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  activeTask.category,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.accentOnSoft,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    activeTask.title,
+                          const SizedBox(height: 14),
+                          Text(
+                            activeTask.title,
                     style: isDesktop
                         ? textTheme.headlineSmall?.copyWith(fontSize: 32)
                         : textTheme.headlineSmall,
@@ -288,10 +298,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                         ],
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    const SizedBox(height: 20),
 
           // Next Badge Card
           _NextBadgeCard(state: state),

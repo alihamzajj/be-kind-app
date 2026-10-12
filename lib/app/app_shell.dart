@@ -186,34 +186,52 @@ class _DesktopScaffold extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.accentSoft,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.accent.withValues(alpha: 0.15)),
                         ),
-                        child: const Icon(Icons.favorite_border, color: AppColors.accent, size: 20),
+                        child: const Icon(Icons.favorite_rounded, color: AppColors.accent, size: 22),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Be Kind',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontSize: 20,
-                                color: AppColors.ink,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Be Kind',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    color: AppColors.ink,
+                                  ),
+                            ),
+                            const Text(
+                              'Daily Good Deeds',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.muted,
                               ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 _SidebarItem(
                   icon: Icons.wb_sunny_outlined,
                   activeIcon: Icons.wb_sunny,
@@ -298,12 +316,12 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
       child: Material(
         color: isSelected ? AppColors.accentSoft : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -312,17 +330,28 @@ class _SidebarItem extends StatelessWidget {
                 Icon(
                   isSelected ? activeIcon : icon,
                   color: isSelected ? AppColors.accent : AppColors.muted,
-                  size: 20,
+                  size: 21,
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? AppColors.accentDark : AppColors.inkSoft,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? AppColors.accentDark : AppColors.inkSoft,
+                    ),
                   ),
                 ),
+                if (isSelected)
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
               ],
             ),
           ),
