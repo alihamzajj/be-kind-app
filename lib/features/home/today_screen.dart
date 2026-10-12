@@ -8,6 +8,7 @@ import 'package:be_kind/features/home/services/quote_library.dart';
 import 'package:be_kind/features/home/widgets/alternatives_sheet.dart';
 import 'package:be_kind/features/home/widgets/motivational_quote_card.dart';
 import 'package:be_kind/core/widgets/kindness_hero_illustration.dart';
+import 'package:be_kind/features/home/widgets/animated_action_buttons.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -222,44 +223,33 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   ),
                   const SizedBox(height: 24),
                   if (!isCompletedToday)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () {
-                              context.push(
-                                '/today/done',
-                                extra: {
-                                  'task': activeTask,
-                                  'predictedStreak': streakCount + 1,
-                                },
+                    AnimatedActionButtons(
+                      onComplete: () {
+                        context.push(
+                          '/today/done',
+                          extra: {
+                            'task': activeTask,
+                            'predictedStreak': streakCount + 1,
+                          },
+                        );
+                      },
+                      onSwap: () {
+                        showModalBottomSheet<void>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => AlternativesSheet(
+                            alternatives: state.alternatives,
+                            onSelect: (selected) {
+                              Navigator.pop(ctx);
+                              ref.read(dailyNotifierProvider.notifier).swapTask(selected);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Swapped to: ${selected.title}')),
                               );
                             },
-                            child: const Text('I did it'),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: () {
-                            showModalBottomSheet<void>(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (ctx) => AlternativesSheet(
-                                alternatives: state.alternatives,
-                                onSelect: (selected) {
-                                  Navigator.pop(ctx);
-                                  ref.read(dailyNotifierProvider.notifier).swapTask(selected);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Swapped to: ${selected.title}')),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                          child: const Text('Swap task'),
-                        ),
-                      ],
+                        );
+                      },
                     )
                   else
                     Container(

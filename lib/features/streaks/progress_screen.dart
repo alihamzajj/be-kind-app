@@ -195,7 +195,7 @@ class ProgressScreen extends ConsumerWidget {
             mainAxisSpacing: 12,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 0.88,
+            childAspectRatio: isDesktop ? 0.85 : 0.72,
             children: state.badges.map((b) {
               final statusStr = b.isEarned
                   ? 'Earned'
@@ -265,21 +265,37 @@ class _BadgeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(
+          color: isEarned ? AppColors.accent.withValues(alpha: 0.3) : AppColors.line,
+          width: isEarned ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isEarned
+                ? AppColors.accent.withValues(alpha: 0.06)
+                : AppColors.ink.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isEarned ? AppColors.accentSoft : AppColors.track,
+              border: Border.all(
+                color: isEarned ? AppColors.accent.withValues(alpha: 0.25) : Colors.transparent,
+                width: 1.5,
+              ),
             ),
             child: Icon(
               icon,
@@ -288,24 +304,34 @@ class _BadgeCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+          Flexible(
+            child: Text(
+              name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                height: 1.15,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            status,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isEarned ? AppColors.accentDark : AppColors.muted,
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: isEarned ? AppColors.accentSoft : AppColors.ground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: isEarned ? AppColors.accentDark : AppColors.muted,
+              ),
             ),
           ),
         ],
