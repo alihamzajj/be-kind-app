@@ -3,10 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:be_kind/app/theme/app_colors.dart';
 import 'package:be_kind/features/home/controllers/daily_controller.dart';
+import 'package:be_kind/features/home/models/motivational_quote.dart';
+import 'package:be_kind/features/home/services/quote_library.dart';
 import 'package:be_kind/features/home/widgets/alternatives_sheet.dart';
+import 'package:be_kind/features/home/widgets/motivational_quote_card.dart';
 
-class TodayScreen extends ConsumerWidget {
+class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
+
+  @override
+  ConsumerState<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends ConsumerState<TodayScreen> {
+  late MotivationalQuote _currentQuote;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentQuote = QuoteLibrary.getRandomQuote();
+  }
+
+  void _refreshQuote() {
+    setState(() {
+      _currentQuote = QuoteLibrary.getRandomQuote(_currentQuote);
+    });
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -23,7 +45,7 @@ class TodayScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(dailyNotifierProvider);
     final textTheme = Theme.of(context).textTheme;
     final isDesktop = MediaQuery.sizeOf(context).width >= 840;
@@ -266,6 +288,13 @@ class TodayScreen extends ConsumerWidget {
 
           // Next Badge Card
           _NextBadgeCard(state: state),
+          const SizedBox(height: 20),
+
+          // Daily Motivational Quote Card
+          MotivationalQuoteCard(
+            quote: _currentQuote,
+            onRefresh: _refreshQuote,
+          ),
           const SizedBox(height: 24),
 
           // Other ideas for today
