@@ -15,11 +15,11 @@ class MotivationalQuoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
+        color: AppColors.accentSoft.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.2), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,19 +30,27 @@ class MotivationalQuoteCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.accentSoft,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.line),
                     ),
-                    child: Text(
-                      quote.topic.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.08 * 11,
-                        color: AppColors.accentOnSoft,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wb_sunny, size: 12, color: AppColors.accent),
+                        const SizedBox(width: 5),
+                        Text(
+                          quote.topic.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.08 * 10,
+                            color: AppColors.accentDark,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -51,7 +59,7 @@ class MotivationalQuoteCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
+                      color: AppColors.accentDark,
                     ),
                   ),
                 ],
@@ -59,34 +67,49 @@ class MotivationalQuoteCard extends StatelessWidget {
               Semantics(
                 label: 'Get another motivational quote',
                 button: true,
-                child: IconButton(
-                  icon: const Icon(Icons.refresh, size: 20, color: AppColors.muted),
-                  tooltip: 'Get another quote',
-                  onPressed: onRefresh,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                child: InkWell(
+                  onTap: onRefresh,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.refresh, size: 16, color: AppColors.accentDark),
+                        SizedBox(width: 4),
+                        Text(
+                          'New spark',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             '“${quote.quote}”',
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 14.5,
               height: 1.45,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w500,
               color: AppColors.ink,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
             child: Text(
               '— ${quote.author}',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.accentDark,
               ),

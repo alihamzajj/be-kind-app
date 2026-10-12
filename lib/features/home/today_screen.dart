@@ -124,7 +124,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
+
+          // Daily Motivational Quote Highlight Banner (First View)
+          MotivationalQuoteCard(
+            quote: _currentQuote,
+            onRefresh: _refreshQuote,
+          ),
+          const SizedBox(height: 18),
 
           // Main Task Card
           if (activeTask != null)
@@ -288,13 +295,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
           // Next Badge Card
           _NextBadgeCard(state: state),
-          const SizedBox(height: 20),
-
-          // Daily Motivational Quote Card
-          MotivationalQuoteCard(
-            quote: _currentQuote,
-            onRefresh: _refreshQuote,
-          ),
           const SizedBox(height: 24),
 
           // Other ideas for today
