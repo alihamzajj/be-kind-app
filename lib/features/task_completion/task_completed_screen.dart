@@ -1,29 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/app_colors.dart';
+import '../home/controllers/daily_controller.dart';
+import '../kindness_tasks/models/kindness_task.dart';
 
-class TaskCompletedScreen extends StatefulWidget {
+class TaskCompletedScreen extends ConsumerStatefulWidget {
   const TaskCompletedScreen({
-    this.taskTitle,
-    this.streakCount = 4,
+    this.task,
+    this.predictedStreak = 1,
+    this.existingNote,
     super.key,
   });
 
-  final String? taskTitle;
-  final int streakCount;
+  final KindnessTask? task;
+  final int predictedStreak;
+  final String? existingNote;
 
   @override
-  State<TaskCompletedScreen> createState() => _TaskCompletedScreenState();
+  ConsumerState<TaskCompletedScreen> createState() => _TaskCompletedScreenState();
 }
 
-class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
-  final TextEditingController _noteController = TextEditingController();
+class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
+  late final TextEditingController _noteController;
   bool _shareWithFriends = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController(text: widget.existingNote ?? '');
+  }
 
   @override
   void dispose() {
     _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    setState(() => _isSaving = true);
+    try {
+      await ref.read(dailyNotifierProvider.notifier).completeTodayTask(
+        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+      );
+      if (mounted) {
+        context.go('/progress');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -50,7 +78,7 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
                     label: 'Back to today',
                     button: true,
                     child: InkWell(
-                      onTap: () => Navigator.of(context).pop(true),
+                      onTap: () => Navigator.of(context).pop(),
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         width: 44,
@@ -100,68 +128,41 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
                 const SizedBox(height: 6),
                 Center(
                   child: Text(
-                    "That's day ${widget.streakCount} in a row.",
-                    style: TextStyle(
+                    "That's day ${widget.predictedStreak} in a row.",
+                    style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.inkSoft,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
-                // Badge unlocked banner (if applicable)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.streakSoft,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.military_tech,
-                          color: AppColors.streak,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'BADGE UNLOCKED',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.08 * 11,
-                                color: AppColors.streak,
-                              ),
+                // Completed task title recap
+                if (widget.task != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentSoft,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: AppColors.accent, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.task!.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accentDark,
                             ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Three-Day Streak',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 24),
 
                 // Private reflection note
@@ -182,10 +183,10 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.lock_outline, size: 14, color: AppColors.muted),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
                       'Only you can see notes.',
                       style: TextStyle(fontSize: 12, color: AppColors.muted),
@@ -204,11 +205,11 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
                   ),
                   child: Row(
                     children: [
-                      Expanded(
+                      const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Share with friends',
                               style: TextStyle(
                                 fontSize: 15,
@@ -216,7 +217,7 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
                                 color: AppColors.ink,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2),
                             Text(
                               'Shows the task only, never your note',
                               style: TextStyle(
@@ -248,10 +249,14 @@ class _TaskCompletedScreenState extends State<TaskCompletedScreen> {
 
                 // Save button
                 FilledButton(
-                  onPressed: () {
-                    context.go('/progress');
-                  },
-                  child: const Text('Save'),
+                  onPressed: _isSaving ? null : _handleSave,
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Save'),
                 ),
               ],
             ),

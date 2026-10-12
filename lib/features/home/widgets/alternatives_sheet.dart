@@ -1,60 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:be_kind/app/theme/app_colors.dart';
-
-class TaskItemData {
-  const TaskItemData({
-    required this.id,
-    required this.title,
-    required this.category,
-    required this.duration,
-    required this.icon,
-  });
-
-  final String id;
-  final String title;
-  final String category;
-  final String duration;
-  final IconData icon;
-}
+import 'package:be_kind/features/kindness_tasks/models/kindness_task.dart';
 
 class AlternativesSheet extends StatelessWidget {
   const AlternativesSheet({
+    required this.alternatives,
     required this.onSelect,
     super.key,
   });
 
-  final ValueChanged<TaskItemData> onSelect;
+  final List<KindnessTask> alternatives;
+  final ValueChanged<KindnessTask> onSelect;
 
-  static const List<TaskItemData> sampleAlternatives = [
-    TaskItemData(
-      id: 'alt_1',
-      title: 'Leave a genuine review for a local mom-and-pop shop',
-      category: 'Community',
-      duration: '4 min',
-      icon: Icons.storefront_outlined,
-    ),
-    TaskItemData(
-      id: 'alt_2',
-      title: 'Water a wilted plant in your home or shared hallway',
-      category: 'Environment',
-      duration: '2 min',
-      icon: Icons.park_outlined,
-    ),
-    TaskItemData(
-      id: 'alt_3',
-      title: 'Text a loved one a memory that made you smile',
-      category: 'Family & Friends',
-      duration: '3 min',
-      icon: Icons.chat_bubble_outline,
-    ),
-    TaskItemData(
-      id: 'alt_4',
-      title: 'Pick up 3 pieces of litter on your walk outside',
-      category: 'Environment',
-      duration: '5 min',
-      icon: Icons.delete_outline,
-    ),
-  ];
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Gratitude':
+        return Icons.favorite_outline;
+      case 'Community':
+        return Icons.storefront_outlined;
+      case 'Environment':
+        return Icons.park_outlined;
+      case 'Self-kindness':
+        return Icons.spa_outlined;
+      case 'Inclusion':
+        return Icons.group_add_outlined;
+      case 'Family & Friends':
+        return Icons.chat_bubble_outline;
+      case 'Helping someone':
+      default:
+        return Icons.volunteer_activism_outlined;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,11 +68,10 @@ class AlternativesSheet extends StatelessWidget {
           Flexible(
             child: ListView.separated(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: sampleAlternatives.length,
+              itemCount: alternatives.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                final item = sampleAlternatives[index];
+                final item = alternatives[index];
                 return InkWell(
                   onTap: () => onSelect(item),
                   borderRadius: BorderRadius.circular(16),
@@ -115,7 +90,7 @@ class AlternativesSheet extends StatelessWidget {
                             color: AppColors.accentSoft,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(item.icon, color: AppColors.accent, size: 22),
+                          child: Icon(_getCategoryIcon(item.category), color: AppColors.accent, size: 22),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -132,7 +107,7 @@ class AlternativesSheet extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${item.category} · ${item.duration}',
+                                '${item.category} · ${item.estimatedMinutes} min',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.muted,

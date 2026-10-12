@@ -1,13 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_colors.dart';
+import '../home/controllers/daily_controller.dart';
+import '../streaks/engine/streak_engine.dart';
 
-class ProgressScreen extends StatelessWidget {
+class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(dailyNotifierProvider);
     final textTheme = Theme.of(context).textTheme;
     final isDesktop = MediaQuery.sizeOf(context).width >= 840;
+
+    if (state.isLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Container(height: 180, decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(24))),
+            const SizedBox(height: 20),
+            Container(height: 240, decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(20))),
+          ],
+        ),
+      );
+    }
+
+    final streak = state.streakResult;
+    final now = DateTime.now();
+
+    // Compute the last 7 days statuses
+    final List<bool> weekCompleted = [];
+    final List<String> weekLabels = [];
+    const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    final completedDatesSet = state.allCompletions.map((c) => c.localDate).toSet();
+
+    for (int i = 6; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final dateStr = StreakEngine.formatLocalDate(date);
+      weekCompleted.add(completedDatesSet.contains(dateStr));
+      weekLabels.add(dayNames[date.weekday - 1]);
+    }
 
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
@@ -56,8 +90,8 @@ class ProgressScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '3 days',
-                          style: TextStyle(
+                          '${streak.currentStreak} ${streak.currentStreak == 1 ? "day" : "days"}',
+                          style: const TextStyle(
                             fontFamily: 'Bricolage Grotesque',
                             fontSize: 38,
                             fontWeight: FontWeight.w700,
@@ -65,7 +99,7 @@ class ProgressScreen extends StatelessWidget {
                             height: 1.1,
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Current streak',
                           style: TextStyle(fontSize: 14, color: AppColors.muted),
                         ),
@@ -78,15 +112,12 @@ class ProgressScreen extends StatelessWidget {
                 // 7-day strip
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    _DayDot(dayLabel: 'M', completed: true),
-                    _DayDot(dayLabel: 'T', completed: true),
-                    _DayDot(dayLabel: 'W', completed: true),
-                    _DayDot(dayLabel: 'T', completed: false),
-                    _DayDot(dayLabel: 'F', completed: false),
-                    _DayDot(dayLabel: 'S', completed: false),
-                    _DayDot(dayLabel: 'S', completed: false),
-                  ],
+                  children: List.generate(7, (idx) {
+                    return _DayDot(
+                      dayLabel: weekLabels[idx],
+                      completed: weekCompleted[idx],
+                    );
+                  }),
                 ),
                 const SizedBox(height: 22),
 
@@ -103,16 +134,16 @@ class ProgressScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '3 days',
-                              style: TextStyle(
+                            Text(
+                              '${streak.longestStreak} days',
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.ink,
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               'Longest streak',
                               style: TextStyle(fontSize: 12, color: AppColors.muted),
                             ),
@@ -131,16 +162,16 @@ class ProgressScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '5',
-                              style: TextStyle(
+                            Text(
+                              '${streak.totalCompletedDays}',
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.ink,
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               'Kind days total',
                               style: TextStyle(fontSize: 12, color: AppColors.muted),
                             ),
@@ -165,44 +196,17 @@ class ProgressScreen extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             childAspectRatio: 0.88,
-            children: const [
-              _BadgeCard(
-                name: 'First Kind Act',
-                status: 'Earned',
-                isEarned: true,
-                icon: Icons.favorite,
-              ),
-              _BadgeCard(
-                name: 'Three-Day',
-                status: 'Earned',
-                isEarned: true,
-                icon: Icons.local_fire_department,
-              ),
-              _BadgeCard(
-                name: 'Seven-Day',
-                status: '3 / 7',
-                isEarned: false,
-                icon: Icons.military_tech_outlined,
-              ),
-              _BadgeCard(
-                name: 'Thirty-Day',
-                status: '3 / 30',
-                isEarned: false,
-                icon: Icons.workspace_premium_outlined,
-              ),
-              _BadgeCard(
-                name: 'Ten Acts',
-                status: '5 / 10',
-                isEarned: false,
-                icon: Icons.stars_outlined,
-              ),
-              _BadgeCard(
-                name: 'Explorer',
-                status: '2 / 6',
-                isEarned: false,
-                icon: Icons.explore_outlined,
-              ),
-            ],
+            children: state.badges.map((b) {
+              final statusStr = b.isEarned
+                  ? 'Earned'
+                  : '${b.currentProgress} / ${b.definition.targetCount}';
+              return _BadgeCard(
+                name: b.definition.name,
+                status: statusStr,
+                isEarned: b.isEarned,
+                icon: b.definition.icon,
+              );
+            }).toList(),
           ),
         ],
       ),

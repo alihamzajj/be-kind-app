@@ -234,9 +234,7 @@ class _DesktopScaffold extends StatelessWidget {
                   label: 'History',
                   isSelected: false,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('History view available in Phase 2')),
-                    );
+                    context.push('/history');
                   },
                 ),
                 _SidebarItem(

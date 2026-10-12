@@ -5,8 +5,10 @@ import '../features/onboarding/welcome_screen.dart';
 import '../features/home/today_screen.dart';
 import '../features/task_completion/task_completed_screen.dart';
 import '../features/streaks/progress_screen.dart';
+import '../features/history/history_screen.dart';
 import '../features/friends/friends_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/kindness_tasks/models/kindness_task.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -19,13 +21,23 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const WelcomeScreen(),
     ),
     GoRoute(
+      path: '/history',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const HistoryScreen(),
+    ),
+    GoRoute(
       path: '/today/done',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
-        final title = extra?['title'] as String?;
-        final streak = extra?['streak'] as int? ?? 4;
-        return TaskCompletedScreen(taskTitle: title, streakCount: streak);
+        final task = extra?['task'] as KindnessTask?;
+        final predictedStreak = extra?['predictedStreak'] as int? ?? 1;
+        final existingNote = extra?['existingNote'] as String?;
+        return TaskCompletedScreen(
+          task: task,
+          predictedStreak: predictedStreak,
+          existingNote: existingNote,
+        );
       },
     ),
     StatefulShellRoute.indexedStack(
