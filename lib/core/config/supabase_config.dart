@@ -1,14 +1,12 @@
 class SupabaseConfig {
-  // Replace these with your Supabase project credentials from your dashboard:
-  // https://supabase.com/dashboard/project/_/settings/api
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://placeholder.supabase.co',
+    defaultValue: 'https://lonhhasovffvmncqpeqo.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'placeholder-anon-key',
+    defaultValue: 'sb_publishable_3v50bwKqtniagasZMme5lA_gabLi9fU',
   );
 
   static bool get isConfigured =>
