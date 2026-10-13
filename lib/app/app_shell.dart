@@ -1,4 +1,7 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:be_kind/app/theme/app_colors.dart';
 
@@ -60,39 +63,168 @@ class _MobileScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ground,
-      body: SafeArea(
-        bottom: false,
-        child: child,
+      // Pages scroll underneath the floating glass bar.
+      extendBody: true,
+      body: SafeArea(bottom: false, child: child),
+      bottomNavigationBar: _GlassNavBar(
+        currentIndex: currentIndex,
+        onSelected: onDestinationSelected,
       ),
-      bottomNavigationBar: Container(
+    );
+  }
+}
+
+typedef _NavItem = ({IconData icon, IconData activeIcon, String label});
+
+const List<_NavItem> _navItems = [
+  (icon: Icons.wb_sunny_outlined, activeIcon: Icons.wb_sunny, label: 'Today'),
+  (
+    icon: Icons.military_tech_outlined,
+    activeIcon: Icons.military_tech,
+    label: 'Progress',
+  ),
+  (icon: Icons.people_outline, activeIcon: Icons.people, label: 'Friends'),
+  (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
+];
+
+/// Floating frosted-glass tab bar with a lime pill on the active tab.
+class _GlassNavBar extends StatelessWidget {
+  const _GlassNavBar({required this.currentIndex, required this.onSelected});
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = AppColors.palette.brightness == Brightness.dark;
+    final radius = BorderRadius.circular(30);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.line, width: 1)),
-        ),
-        child: NavigationBar(
-          selectedIndex: currentIndex,
-          onDestinationSelected: onDestinationSelected,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.wb_sunny_outlined),
-              selectedIcon: Icon(Icons.wb_sunny),
-              label: 'Today',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.military_tech_outlined),
-              selectedIcon: Icon(Icons.military_tech),
-              label: 'Progress',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline),
-              selectedIcon: Icon(Icons.people),
-              label: 'Friends',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile',
+          borderRadius: radius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: dark ? 0.45 : 0.12),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 68,
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: dark ? 0.12 : 0.7),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: dark
+                      ? [
+                          const Color(0xFF2A2D27).withValues(alpha: 0.72),
+                          const Color(0xFF151713).withValues(alpha: 0.72),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.82),
+                          const Color(0xFFF4F6F0).withValues(alpha: 0.68),
+                        ],
+                ),
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < _navItems.length; i++)
+                    Expanded(
+                      child: _GlassNavButton(
+                        item: _navItems[i],
+                        selected: i == currentIndex,
+                        onTap: () => onSelected(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassNavButton extends StatelessWidget {
+  const _GlassNavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? AppColors.onLime : AppColors.muted;
+    final radius = BorderRadius.circular(24);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              color: selected ? AppColors.lime : Colors.transparent,
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.lime.withValues(alpha: 0.45),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? item.activeIcon : item.icon,
+                  size: 22,
+                  color: fg,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

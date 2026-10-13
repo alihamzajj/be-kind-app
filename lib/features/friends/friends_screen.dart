@@ -77,11 +77,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: _loadFriends,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 32),
+            padding: EdgeInsets.fromLTRB(
+              hPad,
+              20,
+              hPad,
+              32 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

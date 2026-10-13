@@ -50,7 +50,7 @@ void main() {
   for (final dark in [false, true]) {
     testWidgets('preview today ${dark ? 'dark' : 'light'}', (tester) async {
       SharedPreferences.setMockInitialValues({});
-      tester.view.physicalSize = const Size(390, 1500);
+      tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(

@@ -37,15 +37,17 @@ class ProgressScreen extends ConsumerWidget {
     final streak = state.streakResult;
     final now = DateTime.now();
 
-    // Last 7 days, oldest first
+    // This week, Monday to Sunday
     const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     final completedDates = state.allCompletions.map((c) => c.localDate).toSet();
+    final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
     final week = List.generate(7, (i) {
-      final date = now.subtract(Duration(days: 6 - i));
+      final date = DateTime(monday.year, monday.month, monday.day + i);
       return (
-        label: dayNames[date.weekday - 1],
+        label: dayNames[i],
         done: completedDates.contains(StreakEngine.formatLocalDate(date)),
-        isToday: i == 6,
+        isToday: i == now.weekday - 1,
+        isFuture: i > now.weekday - 1,
       );
     });
 
@@ -53,7 +55,12 @@ class ProgressScreen extends ConsumerWidget {
     final doneToday = state.todayCompletion != null;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 32),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        20,
+        hPad,
+        32 + MediaQuery.paddingOf(context).bottom,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -162,7 +169,12 @@ class ProgressScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (final d in week)
-                      _DayDot(label: d.label, done: d.done, isToday: d.isToday),
+                      _DayDot(
+                        label: d.label,
+                        done: d.done,
+                        isToday: d.isToday,
+                        isFuture: d.isFuture,
+                      ),
                   ],
                 ),
               ],
@@ -232,14 +244,25 @@ class _DayDot extends StatelessWidget {
     required this.label,
     required this.done,
     required this.isToday,
+    required this.isFuture,
   });
 
   final String label;
   final bool done;
   final bool isToday;
 
+  /// Later this week: shown faded since it can't be done yet.
+  final bool isFuture;
+
   @override
   Widget build(BuildContext context) {
+    return Opacity(
+      opacity: isFuture ? 0.45 : 1,
+      child: _dot(),
+    );
+  }
+
+  Widget _dot() {
     return Column(
       children: [
         Container(

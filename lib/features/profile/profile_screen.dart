@@ -178,8 +178,14 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(hPad, 24, hPad, 32),
+          padding: EdgeInsets.fromLTRB(
+            hPad,
+            24,
+            hPad,
+            32 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

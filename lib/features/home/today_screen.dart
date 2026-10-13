@@ -172,7 +172,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     ];
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 32),
+      // Bottom inset clears the floating glass nav bar.
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        16,
+        hPad,
+        32 + MediaQuery.paddingOf(context).bottom,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),

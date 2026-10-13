@@ -19,7 +19,7 @@ void main() {
     expect(find.text('Sign in or create account'), findsOneWidget);
   });
 
-  testWidgets('AppShell shows NavigationBar at 390px mobile width', (tester) async {
+  testWidgets('AppShell shows glass tab bar at 390px mobile width', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -50,7 +50,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    for (final label in ['Today', 'Progress', 'Friends', 'Profile']) {
+      expect(find.bySemanticsLabel(label), findsOneWidget);
+    }
     expect(find.byType(NavigationRail), findsNothing);
   });
 
@@ -85,7 +88,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(BackdropFilter), findsNothing);
     expect(find.text('Be Kind'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
     expect(find.text('Reminders'), findsOneWidget);
