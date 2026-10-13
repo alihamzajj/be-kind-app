@@ -67,18 +67,17 @@ class _AnimatedActionButtonsState extends State<AnimatedActionButtons>
                 duration: const Duration(milliseconds: 200),
                 height: 54,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.accent,
-                      Color(0xFF24563F),
-                    ],
+                  gradient: LinearGradient(
+                    colors: [AppColors.accent, Color(0xFF24563F)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accent.withValues(alpha: _isPressed ? 0.2 : 0.38),
+                      color: AppColors.accent.withValues(
+                        alpha: _isPressed ? 0.2 : 0.38,
+                      ),
                       blurRadius: _isPressed ? 8 : 16,
                       offset: Offset(0, _isPressed ? 2 : 6),
                     ),
@@ -87,15 +86,23 @@ class _AnimatedActionButtonsState extends State<AnimatedActionButtons>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
-                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     SizedBox(width: 8),
-                    Text(
-                      'I did it',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 0.2,
+                    Flexible(
+                      child: Text(
+                        'I did it',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],
@@ -113,16 +120,25 @@ class _AnimatedActionButtonsState extends State<AnimatedActionButtons>
             onPressed: widget.onSwap,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(48, 54),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              side: const BorderSide(color: AppColors.lineStrong, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              side: BorderSide(color: AppColors.lineStrong, width: 1.5),
               backgroundColor: AppColors.surface,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Icon(Icons.shuffle, size: 18, color: AppColors.ink),
                 SizedBox(width: 6),
-                Text('Swap', style: TextStyle(fontWeight: FontWeight.w600)),
+                Flexible(
+                  child: Text(
+                    'Swap',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
           ),

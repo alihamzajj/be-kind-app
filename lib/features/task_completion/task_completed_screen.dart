@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../app/theme/app_colors.dart';
+import '../../core/widgets/ui.dart';
+import '../achievements/models/badge_models.dart';
 import '../home/controllers/daily_controller.dart';
 import '../kindness_tasks/models/kindness_task.dart';
+import 'widgets/celebration_view.dart';
+import 'widgets/share_card_sheet.dart';
 
 class TaskCompletedScreen extends ConsumerStatefulWidget {
   const TaskCompletedScreen({
@@ -18,13 +23,15 @@ class TaskCompletedScreen extends ConsumerStatefulWidget {
   final String? existingNote;
 
   @override
-  ConsumerState<TaskCompletedScreen> createState() => _TaskCompletedScreenState();
+  ConsumerState<TaskCompletedScreen> createState() =>
+      _TaskCompletedScreenState();
 }
 
 class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
   late final TextEditingController _noteController;
   bool _shareWithFriends = false;
   bool _isSaving = false;
+  ({int streak, BadgeDefinition? badge})? _celebration;
 
   @override
   void initState() {
@@ -40,13 +47,38 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
 
   Future<void> _handleSave() async {
     setState(() => _isSaving = true);
+    final notifier = ref.read(dailyNotifierProvider.notifier);
+    final before = ref.read(dailyNotifierProvider);
+    final wasDoneAlready = before.todayCompletion != null;
+    final earnedBefore = before.badges
+        .where((b) => b.isEarned)
+        .map((b) => b.definition.id)
+        .toSet();
     try {
-      await ref.read(dailyNotifierProvider.notifier).completeTodayTask(
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+      await notifier.completeTodayTask(
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
       );
-      if (mounted) {
-        context.go('/progress');
+      if (!mounted) return;
+      if (wasDoneAlready) {
+        // Just updating the note: no second celebration.
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Note saved')));
+        context.go('/today');
+        return;
       }
+      final after = ref.read(dailyNotifierProvider);
+      final newlyEarned = after.badges
+          .where((b) => b.isEarned && !earnedBefore.contains(b.definition.id))
+          .map((b) => b.definition)
+          .toList();
+      setState(() {
+        _celebration = (
+          streak: after.streakResult.currentStreak,
+          badge: newlyEarned.isEmpty ? null : newlyEarned.first,
+        );
+      });
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -58,6 +90,33 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final isDesktop = MediaQuery.sizeOf(context).width >= 840;
+    final celebration = _celebration;
+
+    if (celebration != null) {
+      return Scaffold(
+        backgroundColor: AppColors.ground,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: CelebrationView(
+                streak: celebration.streak,
+                taskTitle: widget.task?.title ?? 'You did a kind act today.',
+                newBadge: celebration.badge,
+                onContinue: () => context.go('/today'),
+                onShare: widget.task == null
+                    ? null
+                    : () => showShareCardSheet(
+                        context,
+                        streak: celebration.streak,
+                        taskTitle: widget.task!.title,
+                      ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.ground,
@@ -76,24 +135,11 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                   alignment: Alignment.centerLeft,
                   child: Semantics(
                     label: 'Back to today',
-                    button: true,
-                    child: InkWell(
+                    child: RoundIconButton(
+                      icon: Icons.arrow_back,
+                      tooltip: 'Back',
+                      size: 20,
                       onTap: () => Navigator.of(context).pop(),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.line),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back,
-                          color: AppColors.ink,
-                          size: 20,
-                        ),
-                      ),
                     ),
                   ),
                 ),
@@ -102,17 +148,13 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                 // Success icon & headline
                 Center(
                   child: Container(
-                    width: 84,
-                    height: 84,
+                    width: 96,
+                    height: 96,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.accent,
+                      color: AppColors.lime,
                     ),
-                    child: const Icon(
-                      Icons.check,
-                      size: 48,
-                      color: Colors.white,
-                    ),
+                    child: Icon(Icons.check, size: 52, color: AppColors.onLime),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -120,7 +162,7 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                   child: Text(
                     'Nicely done.',
                     style: textTheme.headlineMedium?.copyWith(
-                      fontSize: 30,
+                      fontSize: 34,
                       color: AppColors.ink,
                     ),
                   ),
@@ -129,7 +171,7 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                 Center(
                   child: Text(
                     "That's day ${widget.predictedStreak} in a row.",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       color: AppColors.inkSoft,
                       fontWeight: FontWeight.w500,
@@ -140,23 +182,31 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
 
                 // Completed task title recap
                 if (widget.task != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentSoft,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                  SoftCard(
+                    padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: AppColors.accent, size: 20),
-                        const SizedBox(width: 10),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.surface,
+                          ),
+                          child: Icon(
+                            categoryIcon(widget.task!.category),
+                            color: AppColors.accent,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             widget.task!.title,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.accentDark,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
                             ),
                           ),
                         ),
@@ -166,11 +216,11 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                 const SizedBox(height: 24),
 
                 // Private reflection note
-                const Text(
+                Text(
                   'How did it go? (optional)',
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.ink,
                   ),
                 ),
@@ -183,29 +233,29 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.lock_outline, size: 14, color: AppColors.muted),
                     SizedBox(width: 6),
-                    Text(
-                      'Only you can see notes.',
-                      style: TextStyle(fontSize: 12, color: AppColors.muted),
+                    Expanded(
+                      child: Text(
+                        'Only you can see notes.',
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
                 // Share toggle
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.line),
+                SoftCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -230,14 +280,15 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                       ),
                       Switch(
                         value: _shareWithFriends,
-                        activeThumbColor: AppColors.accent,
                         onChanged: (val) {
                           setState(() {
                             _shareWithFriends = val;
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Sign in to share with friends (Phase 3)'),
+                              content: Text(
+                                'Sharing with friends is coming soon',
+                              ),
                             ),
                           );
                         },
@@ -251,10 +302,13 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                 FilledButton(
                   onPressed: _isSaving ? null : _handleSave,
                   child: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Text('Save'),
                 ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../app/theme/app_colors.dart';
+import '../../core/widgets/ui.dart';
 import '../home/controllers/daily_controller.dart';
 import '../task_completion/models/task_completion.dart';
 
@@ -28,210 +30,194 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dailyNotifierProvider);
-    final textTheme = Theme.of(context).textTheme;
-    final isDesktop = MediaQuery.sizeOf(context).width >= 840;
+    final hPad = pagePadding(context);
 
-    final allCompletions = state.allCompletions;
     final filtered = _selectedCategory == 'All'
-        ? allCompletions
-        : allCompletions.where((c) => c.category == _selectedCategory).toList();
-
-    // Sort descending by date
+        ? state.allCompletions
+        : state.allCompletions
+              .where((c) => c.category == _selectedCategory)
+              .toList();
     final sorted = List<TaskCompletion>.from(filtered)
-      ..sort((a, b) => b.localDate.compareTo(a.localDate));
+      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+
+    // Group into month sections, newest first
+    final sections = <String, List<TaskCompletion>>{};
+    for (final c in sorted) {
+      sections.putIfAbsent(formatMonthYear(c.completedAt), () => []).add(c);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.ground,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Kindness History',
-          style: textTheme.headlineSmall?.copyWith(fontSize: 22, color: AppColors.ink),
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: PageHeader(
+                      title: 'History',
+                      subtitle:
+                          '${state.allCompletions.length} kind '
+                          '${state.allCompletions.length == 1 ? 'act' : 'acts'} so far',
+                      onBack: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 8),
+                    child: Row(
+                      children: [
+                        for (final cat in _categories) ...[
+                          PillChip(
+                            label: cat,
+                            primary: _selectedCategory == cat,
+                            onTap: () =>
+                                setState(() => _selectedCategory = cat),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                if (sorted.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyState(filtered: _selectedCategory != 'All'),
+                  )
+                else
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 32),
+                    sliver: SliverList.list(
+                      children: [
+                        for (final entry in sections.entries) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16, bottom: 4),
+                            child: Text(
+                              entry.key,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                          for (final c in entry.value) _HistoryItem(c: c),
+                        ],
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Category filter chips
-            Container(
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _categories.map((cat) {
-                    final isSelected = _selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        selected: isSelected,
-                        label: Text(cat),
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? AppColors.accentDark : AppColors.inkSoft,
-                        ),
-                        selectedColor: AppColors.accentSoft,
-                        backgroundColor: AppColors.ground,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                            color: isSelected ? AppColors.accent : AppColors.line,
-                          ),
-                        ),
-                        onSelected: (val) {
-                          setState(() {
-                            _selectedCategory = cat;
-                          });
-                        },
+    );
+  }
+}
+
+class _HistoryItem extends StatelessWidget {
+  const _HistoryItem({required this.c});
+
+  final TaskCompletion c;
+
+  @override
+  Widget build(BuildContext context) {
+    final note = c.privateNote;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ActivityRow(
+          icon: categoryIcon(c.category),
+          title: c.taskTitle,
+          subtitle: '${c.category} · ${formatShortDate(c.completedAt)}',
+          trailing: '+1',
+          trailingSub: 'kind act',
+        ),
+        if (note != null && note.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 62, bottom: 8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: AppColors.inkSoft,
                       ),
-                    );
-                  }).toList(),
-                ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Divider(height: 1, thickness: 1, color: AppColors.line),
+          ),
+      ],
+    );
+  }
+}
 
-            // Content List or Empty State
-            Expanded(
-              child: sorted.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.accentSoft,
-                              ),
-                              child: const Icon(Icons.history, color: AppColors.accent, size: 40),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              'No kind acts yet',
-                              style: textTheme.headlineSmall?.copyWith(fontSize: 20),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Your completed good deeds will be recorded here each day.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 32 : 16,
-                        vertical: 16,
-                      ),
-                      itemCount: sorted.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final comp = sorted[index];
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.line),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    comp.localDate,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.muted,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentSoft,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      comp.category,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.accentOnSoft,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 2),
-                                    child: Icon(Icons.check_circle, color: AppColors.accent, size: 18),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      comp.taskTitle,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.ink,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (comp.privateNote != null && comp.privateNote!.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.ground,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Icon(Icons.lock_outline, size: 14, color: AppColors.muted),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          comp.privateNote!,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontStyle: FontStyle.italic,
-                                            color: AppColors.inkSoft,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.filtered});
+
+  final bool filtered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.lime,
             ),
-          ],
-        ),
+            child: Icon(Icons.history, color: AppColors.onLime, size: 34),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            filtered ? 'Nothing in this category' : 'No kind acts yet',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(fontSize: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            filtered
+                ? 'Try another category, or pick "All".'
+                : 'Your completed good deeds will show up here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: AppColors.muted),
+          ),
+        ],
       ),
     );
   }

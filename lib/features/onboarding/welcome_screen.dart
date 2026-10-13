@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../app/theme/app_colors.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -12,103 +13,165 @@ class WelcomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.ground,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - 48).clamp(0.0, double.infinity),
+                  maxWidth: 520,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        width: 220,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accentSoft.withValues(alpha: 0.35),
-                        ),
+                      const Expanded(
+                        child: Center(child: FittedBox(child: _Hero())),
                       ),
-                      Container(
-                        width: 160,
-                        height: 160,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accentSoft,
-                        ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'One kind act,\nevery day.',
+                        style: textTheme.displayLarge?.copyWith(fontSize: 40),
                       ),
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.surface,
+                      const SizedBox(height: 12),
+                      Text(
+                        'Get a small, doable good deed each morning. '
+                        'Most cost nothing and take minutes.',
+                        style: textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 28),
+                      FilledButton(
+                        onPressed: () => context.go('/onboarding'),
+                        child: const Text('Start as a guest'),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        onPressed: () => context.push('/auth'),
+                        child: const Text('Sign in or create account'),
+                      ),
+                      const SizedBox(height: 18),
+                      Text.rich(
+                        TextSpan(
+                          text:
+                              'As a guest, your progress stays on this device. '
+                              'Create an account anytime to back it up. ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.muted,
+                            height: 1.4,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Privacy',
+                              style: TextStyle(
+                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.favorite_outline,
-                          size: 48,
-                          color: AppColors.accent,
-                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
               ),
-              Text(
-                'One kind act,\nevery day.',
-                style: textTheme.displayLarge,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Get a small, doable good deed each morning. Most cost nothing and take minutes.',
-                style: textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () => context.go('/today'),
-                child: const Text('Start as a guest'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Account sign-in coming soon in Phase 3'),
-                    ),
-                  );
-                },
-                child: const Text('Sign in or create account'),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'As a guest, your progress stays on this device. Create an account anytime to back it up. ',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.muted,
-                        height: 1.4,
-                      ),
-                      children: const [
-                        TextSpan(
-                          text: 'Privacy',
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 300,
+      height: 250,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 210,
+            height: 210,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.lime,
+            ),
+          ),
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surface,
+            ),
+            child: Icon(
+              Icons.favorite,
+              size: 52,
+              color: AppColors.accent,
+            ),
+          ),
+          const Positioned(
+            left: 0,
+            top: 34,
+            child: _FloatingPill(
+              icon: Icons.local_fire_department,
+              label: '7 day streak',
+            ),
+          ),
+          const Positioned(
+            right: 0,
+            bottom: 30,
+            child: _FloatingPill(icon: Icons.schedule, label: '2 min'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FloatingPill extends StatelessWidget {
+  const _FloatingPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.streak),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
       ),
     );
   }

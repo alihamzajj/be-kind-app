@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:be_kind/core/notifications/reminder_service.dart';
+import 'package:be_kind/core/settings/app_settings.dart';
 import 'package:be_kind/core/storage/local_data_service.dart';
 import 'package:be_kind/features/kindness_tasks/models/kindness_task.dart';
 import 'package:be_kind/features/kindness_tasks/services/daily_task_selector.dart';
@@ -80,6 +83,7 @@ class DailyState {
 class DailyNotifier extends Notifier<DailyState> {
   @override
   DailyState build() {
+    ref.listen(settingsProvider, (_, _) => _syncReminders());
     init();
     return DailyState.initial();
   }
@@ -139,6 +143,22 @@ class DailyNotifier extends Notifier<DailyState> {
       allCompletions: completions,
       isLoading: false,
     );
+    await _syncReminders();
+  }
+
+  /// Keeps scheduled reminders in line with settings and today's progress.
+  Future<void> _syncReminders() async {
+    if (state.isLoading) return;
+    try {
+      await ReminderService.instance.sync(
+        settings: ref.read(settingsProvider),
+        library: await _dataService.loadTaskLibrary(),
+        todayDone: state.todayCompletion != null,
+      );
+    } catch (e) {
+      // Notifications are best-effort (unsupported platform, tests, denied).
+      debugPrint('Reminder sync skipped: $e');
+    }
   }
 
   Future<void> swapTask(KindnessTask task) async {

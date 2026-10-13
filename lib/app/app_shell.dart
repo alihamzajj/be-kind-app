@@ -65,7 +65,7 @@ class _MobileScaffold extends StatelessWidget {
         child: child,
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.line, width: 1)),
         ),
         child: NavigationBar(
@@ -145,7 +145,7 @@ class _TabletScaffold extends StatelessWidget {
               ),
             ],
           ),
-          const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+          VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -179,7 +179,7 @@ class _DesktopScaffold extends StatelessWidget {
         children: [
           Container(
             width: 220,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surface,
               border: Border(right: BorderSide(color: AppColors.line, width: 1)),
             ),
@@ -199,7 +199,7 @@ class _DesktopScaffold extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.accent.withValues(alpha: 0.15)),
                         ),
-                        child: const Icon(Icons.favorite_rounded, color: AppColors.accent, size: 22),
+                        child: Icon(Icons.favorite_rounded, color: AppColors.accent, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -215,7 +215,7 @@ class _DesktopScaffold extends StatelessWidget {
                                     color: AppColors.ink,
                                   ),
                             ),
-                            const Text(
+                            Text(
                               'Daily Good Deeds',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -347,7 +347,7 @@ class _SidebarItem extends StatelessWidget {
                   Container(
                     width: 5,
                     height: 5,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
