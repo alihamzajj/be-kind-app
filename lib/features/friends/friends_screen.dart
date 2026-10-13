@@ -38,8 +38,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Future<void> _inviteFriend() async {
     await SharePlus.instance.share(
       ShareParams(
-        text:
-            'Join me on Be Kind! Let\'s build a daily kindness streak together: https://bekind.app/invite',
+        text: 'Join me on Be Kind! Let\'s build a daily kindness streak together: https://bekind.app/invite',
       ),
     );
   }
@@ -51,7 +50,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
       _cheeredFriends.add(friend.id);
     });
 
-    await FriendsService.sendCheer(friend.id);
+    final ok = await FriendsService.sendCheer(friend.id);
+    if (!ok && mounted) {
+      setState(() => _cheeredFriends.remove(friend.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Couldn’t send the cheer. Try again.')),
+      );
+      return;
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,6 +120,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 // Community Kindness Streaks Section
                 const SectionHeader(title: 'Active Streaks'),
                 const SizedBox(height: 10),
+                if (!_isLoading && _friends.any((f) => f.isSample))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Examples of what friends look like. Sign in and invite '
+                      'people to see your real friends here.',
+                      style: TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                  ),
 
                 if (_isLoading)
                   const Center(
@@ -128,7 +143,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.people_outline, size: 48, color: AppColors.muted),
+                          Icon(
+                            Icons.people_outline,
+                            size: 48,
+                            color: AppColors.muted,
+                          ),
                           const SizedBox(height: 12),
                           const Text(
                             'No friends connected yet',
@@ -174,11 +193,41 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  friend.name,
-                                  style: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        friend.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (friend.isSample) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.card,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Example',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.muted,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 const SizedBox(height: 2),
                                 Wrap(

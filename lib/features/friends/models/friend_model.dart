@@ -6,6 +6,7 @@ class FriendModel {
     required this.totalActs,
     required this.avatarUrl,
     required this.lastActive,
+    this.isSample = false,
   });
 
   final String id;
@@ -14,6 +15,9 @@ class FriendModel {
   final int totalActs;
   final String? avatarUrl;
   final String lastActive;
+
+  /// An example shown to guests, not a real account.
+  final bool isSample;
 
   factory FriendModel.fromJson(Map<String, dynamic> json) {
     return FriendModel(

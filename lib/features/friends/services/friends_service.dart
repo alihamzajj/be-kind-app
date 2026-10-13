@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/storage/supabase_sync_service.dart';
 import '../models/friend_model.dart';
 
@@ -14,23 +16,30 @@ class FriendsService {
 
     if (client != null && user != null) {
       try {
-        final res = await client
-            .from('profiles')
-            .select()
-            .neq('id', user.id)
-            .limit(10);
+        // Only people the user is actually connected with.
+        final links = await client
+            .from('friendships')
+            .select('user_id, friend_id')
+            .eq('status', 'accepted')
+            .or('user_id.eq.${user.id},friend_id.eq.${user.id}');
+        final ids = (links as List)
+            .map((r) => r['user_id'] == user.id ? r['friend_id'] : r['user_id'])
+            .whereType<String>()
+            .toSet()
+            .toList();
+        if (ids.isEmpty) return const [];
 
-        final list = (res as List)
+        final res = await client.from('profiles').select().inFilter('id', ids);
+        return (res as List)
             .map((e) => FriendModel.fromJson(e as Map<String, dynamic>))
             .toList();
-
-        if (list.isNotEmpty) return list;
       } catch (e) {
         developer.log('Error fetching friends: $e', name: 'FriendsService');
+        return const [];
       }
     }
 
-    // Default friendly community companions
+    // Guests see clearly-labelled examples of what Friends will look like.
     return const [
       FriendModel(
         id: 'demo_1',
@@ -39,6 +48,7 @@ class FriendsService {
         totalActs: 34,
         avatarUrl: null,
         lastActive: 'Today',
+        isSample: true,
       ),
       FriendModel(
         id: 'demo_2',
@@ -47,6 +57,7 @@ class FriendsService {
         totalActs: 21,
         avatarUrl: null,
         lastActive: 'Today',
+        isSample: true,
       ),
       FriendModel(
         id: 'demo_3',
@@ -55,6 +66,7 @@ class FriendsService {
         totalActs: 18,
         avatarUrl: null,
         lastActive: 'Yesterday',
+        isSample: true,
       ),
     ];
   }
@@ -74,8 +86,9 @@ class FriendsService {
         return true;
       } catch (e) {
         developer.log('Error sending cheer: $e', name: 'FriendsService');
+        return false;
       }
     }
-    return true; // Local success
+    return true; // Example friends: the cheer stays local
   }
 }

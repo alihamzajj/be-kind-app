@@ -34,7 +34,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _submit() async {
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    final password = _passwordController.text;
     final name = _nameController.text.trim();
 
     if (email.isEmpty || password.isEmpty || (_isSignUp && name.isEmpty)) {
@@ -46,8 +46,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (!SupabaseConfig.isConfigured) {
       setState(() {
-        _errorMessage =
-            'Supabase credentials are not configured yet.\nAdd SUPABASE_URL and SUPABASE_ANON_KEY to run with real backend.';
+        _errorMessage = 'Supabase credentials are not configured yet.\nAdd SUPABASE_URL and SUPABASE_ANON_KEY to run with real backend.';
       });
       return;
     }
@@ -82,9 +81,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         if (res.user != null) {
           await _syncGuestData();
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Welcome back!')),
-            );
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('Welcome back!')));
             context.go('/today');
           }
         }
@@ -201,7 +199,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: AppColors.error, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.error,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
