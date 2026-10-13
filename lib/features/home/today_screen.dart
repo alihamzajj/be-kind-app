@@ -82,281 +82,377 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(dailyNotifierProvider);
     final settings = ref.watch(settingsProvider);
-    final textTheme = Theme.of(context).textTheme;
-    final isDesktop = MediaQuery.sizeOf(context).width >= 840;
-    final hPad = isDesktop ? 32.0 : 20.0;
+    final hPad = pagePadding(context);
 
-    if (state.isLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppColors.track,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              height: 170,
-              decoration: BoxDecoration(
-                color: AppColors.track,
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    if (state.isLoading) return _LoadingSkeleton(hPad: hPad);
 
     final activeTask = state.selectedTask ?? state.primaryTask;
     final isCompletedToday = state.todayCompletion != null;
     final streakCount = state.streakResult.currentStreak;
-    final recent = [...state.allCompletions]
-      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 20, bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top bar: avatar + streak pill + history shortcut
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Row(
-              children: [
-                _Avatar(
-                  initials: settings.initials,
-                  streakActive: streakCount > 0,
-                  onTap: () => context.go('/profile'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: _Pill(
-                      label: '$streakCount day streak',
-                      icon: Icons.local_fire_department,
-                      onTap: () => context.go('/progress'),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                RoundIconButton(
-                  icon: Icons.calendar_today_outlined,
-                  tooltip: 'History',
-                  onTap: () => context.push('/history'),
-                ),
-              ],
+    final sections = <Widget>[
+      _Header(
+        date: formatShortDate(DateTime.now()),
+        greeting: '${_getGreeting()}, ${settings.displayName}',
+        subtitle: isCompletedToday
+            ? 'You made someone’s day a little brighter.'
+            : 'One small act of kindness is all it takes.',
+        initials: settings.initials,
+        onProfile: () => context.go('/profile'),
+      ),
+
+      // Today's task: the one thing this screen is about.
+      if (activeTask != null)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TodayTaskCard(
+              task: activeTask,
+              isDone: isCompletedToday,
+              onSwap: !isCompletedToday && state.alternatives.isNotEmpty
+                  ? () => _openSwapSheet(state)
+                  : null,
+              onAddNote: () => _addNote(activeTask, state),
+              onShare: () => showShareCardSheet(
+                context,
+                streak: streakCount,
+                taskTitle: activeTask.title,
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
+            if (!isCompletedToday) ...[
+              const SizedBox(height: 14),
+              HoldToConfirmButton(
+                label: 'Hold: I did it',
+                holdingLabel: 'Keep holding…',
+                color: AppColors.accentSoft,
+                onConfirmed: () => _complete(activeTask, streakCount),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Press and hold once you’ve done it',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ],
+          ],
+        ),
 
-          // Headline
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    '${_getGreeting()}, ${settings.displayName}',
-                    style: textTheme.headlineMedium?.copyWith(
-                      fontSize: isDesktop ? 36 : 30,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                RoundIconButton(
-                  icon: Icons.bar_chart_rounded,
-                  tooltip: 'Progress',
+      // At-a-glance progress; both tiles open the Progress tab.
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _StreakTile(
+                streak: streakCount,
+                onTap: () => context.go('/progress'),
+              ),
+            ),
+            if (state.badges.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BadgeTile(
+                  state: state,
                   onTap: () => context.go('/progress'),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Quick actions
-          if (activeTask != null)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              child: Row(
-                children: [
-                  if (isCompletedToday) ...[
-                    PillChip(
-                      label: 'Add note',
-                      primary: true,
-                      onTap: () => _addNote(activeTask, state),
-                    ),
-                    const SizedBox(width: 8),
-                    PillChip(
-                      label: 'Share',
-                      icon: Icons.ios_share,
-                      onTap: () => showShareCardSheet(
-                        context,
-                        streak: streakCount,
-                        taskTitle: activeTask.title,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (!isCompletedToday && state.alternatives.isNotEmpty) ...[
-                    PillChip(
-                      label: 'Swap task',
-                      onTap: () => _openSwapSheet(state),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  PillChip(
-                    label: 'History',
-                    onTap: () => context.push('/history'),
-                  ),
-                ],
               ),
-            ),
-          const SizedBox(height: 18),
-
-          // Card carousel
-          SizedBox(
-            height: 196,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              children: [
-                if (activeTask != null)
-                  _TaskCard(
-                    task: activeTask,
-                    isDone: isCompletedToday,
-                    onTap: isCompletedToday
-                        ? () => _addNote(activeTask, state)
-                        : () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Press and hold \u201cI did it\u201d below '
-                                'when you\u2019ve done it',
-                              ),
-                            ),
-                          ),
-                  ),
-                if (state.badges.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  _BadgeCard(state: state),
-                ],
-                if (!isCompletedToday && state.alternatives.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  _NewIdeaCard(
-                    count: state.alternatives.length,
-                    onTap: () => _openSwapSheet(state),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (activeTask != null && !isCompletedToday) ...[
-            const SizedBox(height: 18),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              child: Column(
-                children: [
-                  HoldToConfirmButton(
-                    label: 'Hold: I did it',
-                    holdingLabel: 'Keep holding\u2026',
-                    onConfirmed: () => _complete(activeTask, streakCount),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Press and hold to mark today\u2019s act as done',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ],
-          const SizedBox(height: 30),
+        ),
+      ),
 
-          // Recent kind acts
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Daily inspiration'),
+          const SizedBox(height: 12),
+          MotivationalQuoteCard(quote: _currentQuote, onRefresh: _refreshQuote),
+        ],
+      ),
+    ];
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < sections.length; i++) ...[
+                if (i > 0) SizedBox(height: i == 1 ? 20 : 28),
+                _Reveal(index: i, child: sections[i]),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fades and lifts each section in, one after another.
+class _Reveal extends StatelessWidget {
+  const _Reveal({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reduceMotion(context)) return child;
+    final delay = index * 0.12;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 380 + index * 70),
+      curve: Interval(delay.clamp(0.0, 0.6), 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 14 * (1 - t)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.date,
+    required this.greeting,
+    required this.subtitle,
+    required this.initials,
+    required this.onProfile,
+  });
+
+  final String date;
+  final String greeting;
+  final String subtitle;
+  final String initials;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 840;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                date.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                greeting,
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontSize: isDesktop ? 34 : 28, height: 1.12),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 14.5, color: AppColors.inkSoft),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _Avatar(initials: initials, onTap: onProfile),
+      ],
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.initials, required this.onTap});
+
+  final String initials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Profile',
+      child: Material(
+        color: AppColors.lime,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onLime,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The hero: today's kind act in full, on a deep green card.
+class _TodayTaskCard extends StatelessWidget {
+  const _TodayTaskCard({
+    required this.task,
+    required this.isDone,
+    required this.onSwap,
+    required this.onAddNote,
+    required this.onShare,
+  });
+
+  final KindnessTask task;
+  final bool isDone;
+  final VoidCallback? onSwap;
+  final VoidCallback onAddNote;
+  final VoidCallback onShare;
+
+  static const _bg = AppColors.onLime;
+  static const _fg = Colors.white;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = AppColors.palette.brightness == Brightness.dark;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.circular(28),
+        border: dark
+            ? Border.all(color: AppColors.lime.withValues(alpha: 0.18))
+            : null,
+      ),
+      child: Stack(
+        children: [
+          // Soft lime glows for depth.
+          Positioned(
+            right: -50,
+            top: -60,
+            child: _Glow(size: 190, alpha: 0.13),
+          ),
+          Positioned(
+            left: -40,
+            bottom: -70,
+            child: _Glow(size: 150, alpha: 0.07),
+          ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
+            padding: const EdgeInsets.all(22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        'Recent kind acts',
-                        style: textTheme.headlineSmall?.copyWith(fontSize: 22),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => context.push('/history'),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          'See all',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
-                            decoration: TextDecoration.underline,
-                          ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: _LimeTag(
+                          icon: categoryIcon(task.category),
+                          label: task.category,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    if (isDone)
+                      const _GhostPill(icon: Icons.check_circle, label: 'Done')
+                    else if (onSwap != null)
+                      _GhostPill(
+                        icon: Icons.shuffle_rounded,
+                        label: 'Swap',
+                        onTap: onSwap,
+                      ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                if (recent.isEmpty)
-                  ActivityRow(
-                    icon: Icons.add,
-                    title: 'Your first kind act',
-                    subtitle: 'Complete today’s task to start',
-                    trailing: '+1',
-                    trailingSub: 'streak',
-                    onTap: activeTask == null || isCompletedToday
-                        ? null
-                        : () => _complete(activeTask, streakCount),
-                  )
-                else
-                  ...recent
-                      .take(3)
-                      .map(
-                        (c) => ActivityRow(
-                          icon: categoryIcon(c.category),
-                          title: c.taskTitle,
-                          subtitle:
-                              '${c.category} · ${formatShortDate(c.completedAt)}',
-                          trailing: '+1',
-                          trailingSub: c.privateNote?.isNotEmpty == true
-                              ? 'with note'
-                              : 'kind act',
-                          onTap: () => context.push('/history'),
+                const SizedBox(height: 20),
+                Text(
+                  isDone ? 'Today’s kind act · done' : 'Today’s kind act',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.lime.withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  task.title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                    color: _fg,
+                  ),
+                ),
+                if (task.description.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    task.description,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.45,
+                      color: _fg.withValues(alpha: 0.78),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _MetaChip(
+                      icon: Icons.schedule_rounded,
+                      label: '${task.estimatedMinutes} min',
+                    ),
+                    _MetaChip(
+                      icon: task.moneyRequired
+                          ? Icons.payments_outlined
+                          : Icons.favorite_border_rounded,
+                      label: task.moneyRequired ? 'May cost a little' : 'Free',
+                    ),
+                    _MetaChip(icon: Icons.bolt_rounded, label: task.difficulty),
+                  ],
+                ),
+                if (isDone) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CardButton(
+                          icon: Icons.edit_note_rounded,
+                          label: 'Add a note',
+                          primary: true,
+                          onTap: onAddNote,
                         ),
                       ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 26),
-
-          // Daily inspiration banner
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Daily inspiration',
-                  style: textTheme.headlineSmall?.copyWith(fontSize: 22),
-                ),
-                const SizedBox(height: 12),
-                MotivationalQuoteCard(
-                  quote: _currentQuote,
-                  onRefresh: _refreshQuote,
-                ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _CardButton(
+                          icon: Icons.ios_share,
+                          label: 'Share',
+                          onTap: onShare,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -366,65 +462,91 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.initials,
-    required this.streakActive,
-    required this.onTap,
-  });
+class _Glow extends StatelessWidget {
+  const _Glow({required this.size, required this.alpha});
 
-  final String initials;
-  final bool streakActive;
-  final VoidCallback onTap;
+  final double size;
+  final double alpha;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Profile',
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.lineStrong),
-                ),
-                child: Text(
-                  initials,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.lime.withValues(alpha: alpha),
+      ),
+    );
+  }
+}
+
+class _LimeTag extends StatelessWidget {
+  const _LimeTag({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+      decoration: const ShapeDecoration(
+        color: AppColors.lime,
+        shape: StadiumBorder(),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.onLime),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onLime,
               ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: streakActive ? AppColors.streak : AppColors.muted,
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department,
-                    size: 10,
-                    color: Colors.white,
-                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Translucent white pill for actions sitting on the green card.
+class _GhostPill extends StatelessWidget {
+  const _GhostPill({required this.icon, required this.label, this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppColors.lime),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -435,28 +557,69 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.icon, required this.onTap});
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.label});
 
-  final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: ShapeDecoration(
+        shape: StadiumBorder(
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CardButton extends StatelessWidget {
+  const _CardButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = primary ? AppColors.onLime : Colors.white;
     return Material(
-      color: AppColors.lime,
+      color: primary ? AppColors.lime : Colors.white.withValues(alpha: 0.12),
       shape: const StadiumBorder(),
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: SizedBox(
+          height: 46,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: AppColors.onLime),
-              const SizedBox(width: 4),
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   label,
@@ -465,7 +628,7 @@ class _Pill extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.onLime,
+                    color: fg,
                   ),
                 ),
               ),
@@ -477,124 +640,64 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _CarouselCard extends StatelessWidget {
-  const _CarouselCard({required this.child, this.onTap, this.dashed = false});
-
-  final Widget child;
-  final VoidCallback? onTap;
-  final bool dashed;
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(22);
-    final content = Material(
-      color: dashed ? AppColors.surface : AppColors.card,
-      borderRadius: radius,
-      child: InkWell(
-        borderRadius: radius,
-        onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(16), child: child),
-      ),
-    );
-    return SizedBox(
-      width: 210,
-      child: dashed
-          ? CustomPaint(
-              foregroundPainter: _DashedBorderPainter(radius: 22),
-              child: content,
-            )
-          : content,
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.task,
-    required this.isDone,
+/// Small tappable summary tile: icon, big number, caption.
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.leading,
+    required this.value,
+    required this.label,
     required this.onTap,
+    this.footer,
   });
 
-  final KindnessTask task;
-  final bool isDone;
+  final Widget leading;
+  final String value;
+  final String label;
   final VoidCallback onTap;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
-    return _CarouselCard(
+    return SoftCard(
       onTap: onTap,
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDone ? AppColors.lime : AppColors.surface,
-                ),
-                child: Icon(
-                  isDone ? Icons.check : Icons.favorite,
-                  size: 18,
-                  color: isDone ? AppColors.onLime : AppColors.streak,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  task.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
+              leading,
+              const Spacer(),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: AppColors.muted,
               ),
             ],
           ),
-          const Spacer(),
-          Row(
-            children: [
-              Icon(Icons.schedule, size: 13, color: AppColors.muted),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  '${task.estimatedMinutes} min · '
-                  '${task.moneyRequired ? 'May cost money' : 'Free'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: AppColors.muted),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 14),
           Text(
-            task.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            value,
+            maxLines: 1,
             style: TextStyle(
-              fontSize: 18,
-              height: 1.2,
+              fontSize: 26,
+              height: 1.1,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
+              letterSpacing: -0.8,
               color: AppColors.ink,
             ),
           ),
-          if (isDone) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Done for today',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.positive,
-              ),
-            ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: AppColors.muted),
+          ),
+          if (footer != null) ...[
+            const Spacer(),
+            const SizedBox(height: 10),
+            footer!,
           ],
         ],
       ),
@@ -602,167 +705,118 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-class _BadgeCard extends StatelessWidget {
-  const _BadgeCard({required this.state});
+class _StreakTile extends StatelessWidget {
+  const _StreakTile({required this.streak, required this.onTap});
 
-  final DailyState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final nextBadge = state.badges.firstWhere(
-      (b) => !b.isEarned,
-      orElse: () => state.badges.first,
-    );
-    final target = nextBadge.definition.targetCount;
-    final progressRatio = (nextBadge.currentProgress / target).clamp(0.0, 1.0);
-
-    return _CarouselCard(
-      onTap: () => context.go('/progress'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.surface,
-                ),
-                child: Icon(
-                  Icons.military_tech,
-                  size: 20,
-                  color: AppColors.accent,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Next badge',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            nextBadge.definition.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${nextBadge.currentProgress} / $target',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.8,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progressRatio,
-              minHeight: 6,
-              backgroundColor: AppColors.surface,
-              valueColor: AlwaysStoppedAnimation(AppColors.positive),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NewIdeaCard extends StatelessWidget {
-  const _NewIdeaCard({required this.count, required this.onTap});
-
-  final int count;
+  final int streak;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _CarouselCard(
-      dashed: true,
+    return _StatTile(
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.lineStrong),
-                ),
-                child: Icon(Icons.add, color: AppColors.ink),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'New idea',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            'Not feeling this one? Swap to one of $count other kind acts.',
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              color: AppColors.inkSoft,
-            ),
-          ),
-        ],
+      leading: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.streakSoft,
+        ),
+        child: StreakFlame(size: 22, lit: streak > 0),
+      ),
+      value: streak == 1 ? '1 day' : '$streak days',
+      label: streak == 0 ? 'Start your streak today' : 'Current streak',
+    );
+  }
+}
+
+class _BadgeTile extends StatelessWidget {
+  const _BadgeTile({required this.state, required this.onTap});
+
+  final DailyState state;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final badges = state.badges;
+    final next = badges.where((b) => !b.isEarned).firstOrNull;
+    final earned = badges.where((b) => b.isEarned).length;
+
+    final String value;
+    final String label;
+    final double ratio;
+    if (next == null) {
+      value = '$earned/${badges.length}';
+      label = 'All badges earned';
+      ratio = 1;
+    } else {
+      final target = next.definition.targetCount;
+      value = '${next.currentProgress.clamp(0, target)}/$target';
+      label = 'Next: ${next.definition.name}';
+      ratio = (next.currentProgress / target).clamp(0.0, 1.0);
+    }
+
+    return _StatTile(
+      onTap: onTap,
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.accentSoft,
+        ),
+        child: Icon(
+          next?.definition.icon ?? Icons.military_tech,
+          size: 20,
+          color: AppColors.accent,
+        ),
+      ),
+      value: value,
+      label: label,
+      footer: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: ratio,
+          minHeight: 6,
+          backgroundColor: AppColors.surface,
+          valueColor: AlwaysStoppedAnimation(AppColors.positive),
+        ),
       ),
     );
   }
 }
 
-class _DashedBorderPainter extends CustomPainter {
-  _DashedBorderPainter({required this.radius});
+class _LoadingSkeleton extends StatelessWidget {
+  const _LoadingSkeleton({required this.hPad});
 
-  final double radius;
+  final double hPad;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.lineStrong
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Offset.zero & size,
-          Radius.circular(radius),
-        ).deflate(0.75),
-      );
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        canvas.drawPath(metric.extractPath(distance, distance + 6), paint);
-        distance += 11;
-      }
-    }
+  Widget build(BuildContext context) {
+    Widget block(double height, {double radius = 24, double? width}) =>
+        Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: AppColors.track,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          block(12, radius: 6, width: 90),
+          const SizedBox(height: 10),
+          block(30, radius: 10, width: 240),
+          const SizedBox(height: 24),
+          block(260, radius: 28),
+          const SizedBox(height: 14),
+          block(60, radius: 999),
+        ],
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
-      oldDelegate.radius != radius;
 }

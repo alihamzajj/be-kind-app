@@ -17,6 +17,7 @@ class HoldToConfirmButton extends StatefulWidget {
     required this.holdingLabel,
     required this.onConfirmed,
     this.duration = const Duration(milliseconds: 1100),
+    this.color,
     super.key,
   });
 
@@ -24,6 +25,9 @@ class HoldToConfirmButton extends StatefulWidget {
   final String holdingLabel;
   final VoidCallback onConfirmed;
   final Duration duration;
+
+  /// Unfilled background; defaults to [AppColors.card].
+  final Color? color;
 
   @override
   State<HoldToConfirmButton> createState() => _HoldToConfirmButtonState();
@@ -92,7 +96,7 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
                 height: 60,
                 clipBehavior: Clip.antiAlias,
                 decoration: ShapeDecoration(
-                  color: AppColors.card,
+                  color: widget.color ?? AppColors.card,
                   shape: const StadiumBorder(),
                 ),
                 child: Stack(

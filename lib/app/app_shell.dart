@@ -267,11 +267,7 @@ class _DesktopScaffold extends StatelessWidget {
                   activeIcon: Icons.notifications,
                   label: 'Reminders',
                   isSelected: false,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Reminders available in Phase 4')),
-                    );
-                  },
+                  onTap: () => context.push('/reminders'),
                 ),
                 _SidebarItem(
                   icon: Icons.person_outline,

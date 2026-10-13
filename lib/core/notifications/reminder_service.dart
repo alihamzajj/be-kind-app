@@ -28,6 +28,16 @@ class ReminderService {
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
 
+  /// Inexact alarms can arrive many hours late, so use exact ones whenever
+  /// Android lets us (always below Android 12; needs the "Alarms &
+  /// reminders" permission from 12 on).
+  AndroidScheduleMode _scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
+
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+
   bool get _supported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -59,12 +69,13 @@ class ReminderService {
   Future<bool> requestPermission() async {
     if (!_supported) return false;
     await init();
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final android = _android;
     if (android != null) {
-      return await android.requestNotificationsPermission() ?? false;
+      final granted = await android.requestNotificationsPermission() ?? false;
+      if (granted && await android.canScheduleExactNotifications() != true) {
+        await android.requestExactAlarmsPermission();
+      }
+      return granted;
     }
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
@@ -95,6 +106,13 @@ class ReminderService {
     await init();
     await _plugin.cancelAllPendingNotifications();
     if (!settings.reminderEnabled || library.isEmpty) return;
+
+    final android = _android;
+    if (android != null) {
+      _scheduleMode = await android.canScheduleExactNotifications() == false
+          ? AndroidScheduleMode.inexactAllowWhileIdle
+          : AndroidScheduleMode.exactAllowWhileIdle;
+    }
 
     final now = tz.TZDateTime.now(tz.local);
     for (var i = 0; i < _horizonDays; i++) {
@@ -154,7 +172,7 @@ class ReminderService {
       id: id,
       scheduledDate: when,
       notificationDetails: _details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: _scheduleMode,
       title: title,
       body: body,
     );
