@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/onboarding/splash_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
 import '../features/profile/reminder_settings_screen.dart';
 import '../features/home/today_screen.dart';
@@ -16,13 +17,18 @@ import '../features/kindness_tasks/models/kindness_task.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Where the app opens; set in `main` once settings are loaded.
+/// Where the splash hands off to; set in `main` once settings are loaded.
 String appStartLocation = '/welcome';
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: appStartLocation,
+  initialLocation: '/splash',
   routes: [
+    GoRoute(
+      path: '/splash',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: SplashScreen()),
+    ),
     GoRoute(
       path: '/welcome',
       builder: (context, state) => const WelcomeScreen(),
