@@ -7,6 +7,7 @@ import '../../core/widgets/ui.dart';
 import '../home/controllers/daily_controller.dart';
 import '../streaks/engine/streak_engine.dart';
 import 'widgets/growth_widgets.dart';
+import '../../core/widgets/motion.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -49,6 +50,7 @@ class ProgressScreen extends ConsumerWidget {
     });
 
     final earned = state.badges.where((b) => b.isEarned).length;
+    final doneToday = state.todayCompletion != null;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 32),
@@ -91,41 +93,69 @@ class ProgressScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surface,
-                      ),
-                      child: Icon(
-                        Icons.local_fire_department,
-                        color: AppColors.streak,
-                        size: 22,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current streak',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              RollingNumber(
+                                value: streak.currentStreak,
+                                rollFrom: doneToday && streak.currentStreak > 0
+                                    ? streak.currentStreak - 1
+                                    : null,
+                                style: TextStyle(
+                                  fontSize: 56,
+                                  height: 1,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -2,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                streak.currentStreak == 1 ? 'day' : 'days',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            !doneToday
+                                ? 'Do today’s act to keep it burning'
+                                : (streak.currentStreak > 1 &&
+                                          streak.currentStreak >=
+                                              streak.longestStreak
+                                      ? 'Your longest streak yet!'
+                                      : '+1 today. Nicely done!'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.streak,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Current streak',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
+                    StreakFlame(size: 88, lit: streak.currentStreak > 0),
                   ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  '${streak.currentStreak} ${streak.currentStreak == 1 ? 'day' : 'days'}',
-                  style: TextStyle(
-                    fontSize: 44,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.6,
-                    color: AppColors.ink,
-                  ),
                 ),
                 const SizedBox(height: 22),
                 Row(

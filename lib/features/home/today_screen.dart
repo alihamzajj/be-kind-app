@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:be_kind/app/theme/app_colors.dart';
@@ -11,6 +10,7 @@ import 'package:be_kind/features/home/widgets/motivational_quote_card.dart';
 import 'package:be_kind/features/kindness_tasks/models/kindness_task.dart';
 import 'package:be_kind/features/task_completion/widgets/share_card_sheet.dart';
 import 'package:be_kind/core/settings/app_settings.dart';
+import 'package:be_kind/core/widgets/motion.dart';
 import 'package:be_kind/core/widgets/ui.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
@@ -43,7 +43,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 
   void _complete(KindnessTask task, int streakCount) {
-    HapticFeedback.selectionClick();
     context.push(
       '/today/done',
       extra: {'task': task, 'predictedStreak': streakCount + 1},
@@ -187,19 +186,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: Row(
                 children: [
-                  if (!isCompletedToday)
-                    PillChip(
-                      label: 'I did it',
-                      primary: true,
-                      onTap: () => _complete(activeTask, streakCount),
-                    )
-                  else
+                  if (isCompletedToday) ...[
                     PillChip(
                       label: 'Add note',
                       primary: true,
                       onTap: () => _addNote(activeTask, state),
                     ),
-                  if (isCompletedToday) ...[
                     const SizedBox(width: 8),
                     PillChip(
                       label: 'Share',
@@ -210,8 +202,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                         taskTitle: activeTask.title,
                       ),
                     ),
+                    const SizedBox(width: 8),
                   ],
-                  const SizedBox(width: 8),
                   if (!isCompletedToday && state.alternatives.isNotEmpty) ...[
                     PillChip(
                       label: 'Swap task',
@@ -241,7 +233,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     isDone: isCompletedToday,
                     onTap: isCompletedToday
                         ? () => _addNote(activeTask, state)
-                        : () => _complete(activeTask, streakCount),
+                        : () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Press and hold \u201cI did it\u201d below '
+                                'when you\u2019ve done it',
+                              ),
+                            ),
+                          ),
                   ),
                 if (state.badges.isNotEmpty) ...[
                   const SizedBox(width: 12),
@@ -257,6 +256,26 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               ],
             ),
           ),
+          if (activeTask != null && !isCompletedToday) ...[
+            const SizedBox(height: 18),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: hPad),
+              child: Column(
+                children: [
+                  HoldToConfirmButton(
+                    label: 'Hold: I did it',
+                    holdingLabel: 'Keep holding\u2026',
+                    onConfirmed: () => _complete(activeTask, streakCount),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Press and hold to mark today\u2019s act as done',
+                    style: TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 30),
 
           // Recent kind acts

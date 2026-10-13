@@ -6,6 +6,8 @@ import '../../../app/theme/app_colors.dart';
 import '../../../core/widgets/ui.dart';
 import '../../task_completion/models/task_completion.dart';
 import '../engine/streak_engine.dart';
+import '../../../core/widgets/motion.dart';
+import 'growing_plant.dart';
 
 /// Month grid with done days filled in lime and today ringed.
 class MonthCalendar extends StatefulWidget {
@@ -23,11 +25,34 @@ class MonthCalendar extends StatefulWidget {
   State<MonthCalendar> createState() => _MonthCalendarState();
 }
 
-class _MonthCalendarState extends State<MonthCalendar> {
+class _MonthCalendarState extends State<MonthCalendar>
+    with SingleTickerProviderStateMixin {
   late DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+  late final AnimationController _reveal = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
 
-  void _shift(int delta) =>
-      setState(() => _month = DateTime(_month.year, _month.month + delta));
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _reveal.value = 1;
+    } else if (_reveal.value == 0) {
+      _reveal.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _reveal.dispose();
+    super.dispose();
+  }
+
+  void _shift(int delta) {
+    setState(() => _month = DateTime(_month.year, _month.month + delta));
+    if (!reduceMotion(context)) _reveal.forward(from: 0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +133,13 @@ class _MonthCalendarState extends State<MonthCalendar> {
                   for (var i = 0; i < leading; i++) const SizedBox.shrink(),
                   for (var d = 1; d <= daysInMonth; d++)
                     _DayCell(
+                      reveal: CurvedAnimation(
+                        parent: _reveal,
+                        curve: Interval(
+                          (d - 1) / daysInMonth * 0.6,
+                          (d - 1) / daysInMonth * 0.6 + 0.4,
+                        ),
+                      ),
                       day: d,
                       done: widget.completedDates.contains(
                         StreakEngine.formatLocalDate(
@@ -158,18 +190,18 @@ class _MonthCalendarState extends State<MonthCalendar> {
         Row(
           children: [
             Expanded(
-              child: _MiniTile(value: '$doneThisMonth', label: 'This month'),
+              child: _MiniTile(count: doneThisMonth, label: 'This month'),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: _MiniTile(
-                value: '${widget.longestStreak}',
+                count: widget.longestStreak,
                 label: 'Best streak',
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: _MiniTile(value: '$pct%', label: 'Days kind'),
+              child: _RingTile(percent: pct, label: 'Days kind'),
             ),
           ],
         ),
@@ -211,12 +243,14 @@ class _NavButton extends StatelessWidget {
 
 class _DayCell extends StatelessWidget {
   const _DayCell({
+    required this.reveal,
     required this.day,
     required this.done,
     required this.isToday,
     required this.isFuture,
   });
 
+  final Animation<double> reveal;
   final int day;
   final bool done;
   final bool isToday;
@@ -224,25 +258,44 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: done
-            ? AppColors.lime
-            : (isFuture ? Colors.transparent : AppColors.surface),
-        border: isToday ? Border.all(color: AppColors.accent, width: 2) : null,
-      ),
-      child: Text(
-        '$day',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: done || isToday ? FontWeight.w800 : FontWeight.w600,
-          color: done
-              ? AppColors.onLime
-              : (isFuture ? AppColors.lineStrong : AppColors.ink),
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: reveal,
+      builder: (context, _) {
+        final t = reveal.value;
+        // Pop in with a little overshoot; done days turn lime as they land.
+        final scale = Curves.easeOutBack.transform(t.clamp(0.0, 1.0));
+        final lit = done && t > 0.55;
+        return Opacity(
+          opacity: (t * 2).clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: 0.3 + 0.7 * scale,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: lit
+                    ? AppColors.lime
+                    : (isFuture ? Colors.transparent : AppColors.surface),
+                border: isToday
+                    ? Border.all(color: AppColors.accent, width: 2)
+                    : null,
+              ),
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: done || isToday
+                      ? FontWeight.w800
+                      : FontWeight.w600,
+                  color: lit
+                      ? AppColors.onLime
+                      : (isFuture ? AppColors.lineStrong : AppColors.ink),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -267,9 +320,9 @@ class _Legend extends StatelessWidget {
 }
 
 class _MiniTile extends StatelessWidget {
-  const _MiniTile({required this.value, required this.label});
+  const _MiniTile({required this.count, required this.label});
 
-  final String value;
+  final int count;
   final String label;
 
   @override
@@ -279,8 +332,9 @@ class _MiniTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value,
+          CountUpText(
+            value: count,
+            delay: const Duration(milliseconds: 600),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -300,7 +354,65 @@ class _MiniTile extends StatelessWidget {
   }
 }
 
-/// Growth levels by total kind acts.
+class _RingTile extends StatelessWidget {
+  const _RingTile({required this.percent, required this.label});
+
+  final int percent;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = reduceMotion(context);
+    return SoftCard(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: percent / 100),
+              duration: Duration(milliseconds: still ? 0 : 1500),
+              curve: const Interval(0.35, 1, curve: Curves.easeOutCubic),
+              builder: (context, v, _) => CircularProgressIndicator(
+                value: v,
+                strokeWidth: 6,
+                strokeCap: StrokeCap.round,
+                backgroundColor: AppColors.surface,
+                valueColor: AlwaysStoppedAnimation(AppColors.accent),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CountUpText(
+                  value: percent,
+                  suffix: '%',
+                  delay: const Duration(milliseconds: 600),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class KindnessLevel {
   const KindnessLevel(this.number, this.name, this.minActs, this.icon);
 
@@ -347,40 +459,34 @@ class LevelCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.lime,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LEVEL ${level.number}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: AppColors.lime,
+                      ),
+                    ),
+                    Text(
+                      level.name,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Icon(level.icon, color: AppColors.onLime, size: 28),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'LEVEL ${level.number}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                      color: AppColors.lime,
-                    ),
-                  ),
-                  Text(
-                    level.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.6,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
+              GrowingPlant(level: level.number, width: 104, height: 120),
             ],
           ),
           const SizedBox(height: 18),
