@@ -86,7 +86,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/friends',
-              builder: (context, state) => const FriendsPlaceholderScreen(),
+              builder: (context, state) => const FriendsScreen(),
             ),
           ],
         ),
