@@ -104,6 +104,63 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter your email address to reset password.';
+      });
+      return;
+    }
+
+    if (!SupabaseConfig.isConfigured) {
+      setState(() {
+        _errorMessage = 'Supabase credentials are not configured.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (mounted) {
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Password Reset Sent'),
+            content: Text(
+              'A password reset link has been sent to $email.\n\nCheck your inbox and follow the link to reset your password.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      setState(() {
+        _errorMessage = e.message;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Could not send reset email: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _syncGuestData() async {
     final state = ref.read(dailyNotifierProvider);
     await SupabaseSyncService.syncCompletions(state.allCompletions);
@@ -185,7 +242,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),
-              const SizedBox(height: 20),
+
+              if (!_isSignUp) ...[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _isLoading ? null : _forgotPassword,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: Text(
+                      'Forgot password?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.inkSoft,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else
+                const SizedBox(height: 20),
 
               if (_errorMessage != null) ...[
                 Container(
