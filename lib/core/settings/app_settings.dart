@@ -15,6 +15,7 @@ class AppSettings {
     this.reminderMinute = 0,
     this.reminderDays = const [1, 2, 3, 4, 5, 6, 7],
     this.eveningNudge = false,
+    this.voiceGreeting = true,
   });
 
   final String? name;
@@ -27,6 +28,9 @@ class AppSettings {
   /// ISO weekdays (1 = Monday … 7 = Sunday).
   final List<int> reminderDays;
   final bool eveningNudge;
+
+  /// Say "Hi" and the user's name out loud when the app opens.
+  final bool voiceGreeting;
 
   String get displayName {
     final n = name?.trim();
@@ -52,6 +56,7 @@ class AppSettings {
     int? reminderMinute,
     List<int>? reminderDays,
     bool? eveningNudge,
+    bool? voiceGreeting,
   }) {
     return AppSettings(
       name: name ?? this.name,
@@ -62,6 +67,7 @@ class AppSettings {
       reminderMinute: reminderMinute ?? this.reminderMinute,
       reminderDays: reminderDays ?? this.reminderDays,
       eveningNudge: eveningNudge ?? this.eveningNudge,
+      voiceGreeting: voiceGreeting ?? this.voiceGreeting,
     );
   }
 
@@ -74,6 +80,7 @@ class AppSettings {
     'reminderMinute': reminderMinute,
     'reminderDays': reminderDays,
     'eveningNudge': eveningNudge,
+    'voiceGreeting': voiceGreeting,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -93,6 +100,7 @@ class AppSettings {
               .toList() ??
           const [1, 2, 3, 4, 5, 6, 7],
       eveningNudge: json['eveningNudge'] as bool? ?? false,
+      voiceGreeting: json['voiceGreeting'] as bool? ?? true,
     );
   }
 

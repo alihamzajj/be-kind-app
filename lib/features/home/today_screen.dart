@@ -11,6 +11,7 @@ import 'package:be_kind/features/kindness_tasks/models/kindness_task.dart';
 import 'package:be_kind/features/task_completion/widgets/share_card_sheet.dart';
 import 'package:be_kind/core/settings/app_settings.dart';
 import 'package:be_kind/core/widgets/motion.dart';
+import 'package:be_kind/core/voice/voice_greeting.dart';
 import 'package:be_kind/core/widgets/ui.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _greetByVoice());
     _currentQuote = QuoteLibrary.getRandomQuote();
   }
 
@@ -33,6 +35,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     setState(() {
       _currentQuote = QuoteLibrary.getRandomQuote(_currentQuote);
     });
+  }
+
+  void _greetByVoice() {
+    final settings = ref.read(settingsProvider);
+    if (!mounted || !settings.voiceGreeting) return;
+    VoiceGreeting.instance.greetOnce(
+      name: settings.displayName,
+      greeting: _getGreeting(),
+    );
   }
 
   String _getGreeting() {
@@ -101,7 +112,34 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         onProfile: () => context.go('/profile'),
       ),
 
-      // Today's task: the one thing this screen is about.
+      // Daily inspiration up top, right under the greeting.
+      MotivationalQuoteCard(quote: _currentQuote, onRefresh: _refreshQuote),
+
+      // At-a-glance progress; both tiles open the Progress tab.
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _StreakTile(
+                streak: streakCount,
+                onTap: () => context.go('/progress'),
+              ),
+            ),
+            if (state.badges.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BadgeTile(
+                  state: state,
+                  onTap: () => context.go('/progress'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+
+      // Today's task, with the hold-to-complete button under it.
       if (activeTask != null)
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -136,39 +174,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             ],
           ],
         ),
-
-      // At-a-glance progress; both tiles open the Progress tab.
-      IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _StreakTile(
-                streak: streakCount,
-                onTap: () => context.go('/progress'),
-              ),
-            ),
-            if (state.badges.isNotEmpty) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: _BadgeTile(
-                  state: state,
-                  onTap: () => context.go('/progress'),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Daily inspiration'),
-          const SizedBox(height: 12),
-          MotivationalQuoteCard(quote: _currentQuote, onRefresh: _refreshQuote),
-        ],
-      ),
     ];
 
     return SingleChildScrollView(

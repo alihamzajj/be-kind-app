@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/storage/supabase_sync_service.dart';
+import '../../core/voice/voice_greeting.dart';
 import '../../core/widgets/ui.dart';
 import '../home/controllers/daily_controller.dart';
 import 'reminder_settings_screen.dart';
@@ -315,6 +316,27 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
                     : 'Off · get nudged each morning',
                 trailingIcon: Icons.chevron_right,
                 onTap: () => context.push('/reminders'),
+              ),
+              ActivityRow(
+                icon: settings.voiceGreeting
+                    ? Icons.record_voice_over_outlined
+                    : Icons.voice_over_off_outlined,
+                title: 'Voice greeting',
+                subtitle: settings.voiceGreeting
+                    ? 'On · says hi to you when the app opens'
+                    : 'Off',
+                trailingIcon: settings.voiceGreeting
+                    ? Icons.toggle_on
+                    : Icons.toggle_off_outlined,
+                onTap: () {
+                  final on = !settings.voiceGreeting;
+                  ref
+                      .read(settingsProvider.notifier)
+                      .update((s) => s.copyWith(voiceGreeting: on));
+                  if (on) {
+                    VoiceGreeting.instance.say('Hi ${settings.displayName}!');
+                  }
+                },
               ),
               ActivityRow(
                 icon: Icons.contrast,
