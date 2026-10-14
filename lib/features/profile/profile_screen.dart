@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/settings/app_settings.dart';
@@ -104,32 +102,6 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportData(BuildContext context, WidgetRef ref) async {
-    final state = ref.read(dailyNotifierProvider);
-    final data = {
-      'app': 'Be Kind',
-      'exported_at': DateTime.now().toIso8601String(),
-      'streak': state.streakResult.currentStreak,
-      'longest_streak': state.streakResult.longestStreak,
-      'total_acts': state.allCompletions.length,
-      'completions': state.allCompletions.map((c) => c.toJson()).toList(),
-      'badges': state.badges
-          .where((b) => b.isEarned)
-          .map((b) => {
-                'id': b.definition.id,
-                'name': b.definition.name,
-                'earned_at': b.earnedAt?.toIso8601String(),
-              })
-          .toList(),
-    };
-
-    final jsonString = const JsonEncoder.withIndent('  ').convert(data);
-    await SharePlus.instance.share(
-      ShareParams(
-        text: jsonString,
-      ),
-    );
-  }
 
   Future<void> _handleSignOut(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -295,13 +267,6 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
                 subtitle: 'Streaks, totals and milestones',
                 trailingIcon: Icons.chevron_right,
                 onTap: () => context.go('/progress'),
-              ),
-              ActivityRow(
-                icon: Icons.file_download_outlined,
-                title: 'Export kindness data',
-                subtitle: 'Backup or download your history as JSON',
-                trailingIcon: Icons.chevron_right,
-                onTap: () => _exportData(context, ref),
               ),
               const SizedBox(height: 20),
               const SectionHeader(title: 'Settings'),
