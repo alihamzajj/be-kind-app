@@ -87,7 +87,9 @@ const List<_NavItem> _navItems = [
   (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
 ];
 
-/// Floating frosted-glass tab bar with a lime pill on the active tab.
+/// Four floating round glass buttons; the active one turns lime and glows.
+/// A soft fade in the page colour sits behind them so labels stay readable
+/// over whatever scrolls underneath.
 class _GlassNavBar extends StatelessWidget {
   const _GlassNavBar({required this.currentIndex, required this.onSelected});
 
@@ -96,61 +98,36 @@ class _GlassNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = AppColors.palette.brightness == Brightness.dark;
-    final radius = BorderRadius.circular(30);
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: dark ? 0.45 : 0.12),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, 0.45, 1],
+          colors: [
+            AppColors.ground.withValues(alpha: 0),
+            AppColors.ground.withValues(alpha: 0.85),
+            AppColors.ground,
           ],
         ),
-        child: ClipRRect(
-          borderRadius: radius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              height: 68,
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: dark ? 0.12 : 0.7),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (var i = 0; i < _navItems.length; i++)
+                Flexible(
+                  child: _GlassNavButton(
+                    item: _navItems[i],
+                    selected: i == currentIndex,
+                    onTap: () => onSelected(i),
+                  ),
                 ),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: dark
-                      ? [
-                          const Color(0xFF2A2D27).withValues(alpha: 0.72),
-                          const Color(0xFF151713).withValues(alpha: 0.72),
-                        ]
-                      : [
-                          Colors.white.withValues(alpha: 0.82),
-                          const Color(0xFFF4F6F0).withValues(alpha: 0.68),
-                        ],
-                ),
-              ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < _navItems.length; i++)
-                    Expanded(
-                      child: _GlassNavButton(
-                        item: _navItems[i],
-                        selected: i == currentIndex,
-                        onTap: () => onSelected(i),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
       ),
@@ -169,61 +146,131 @@ class _GlassNavButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  static const _size = 56.0;
+
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.onLime : AppColors.muted;
-    final radius = BorderRadius.circular(24);
+    final dark = AppColors.palette.brightness == Brightness.dark;
     return Semantics(
       button: true,
       selected: selected,
       label: item.label,
       excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onTap();
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              color: selected ? AppColors.lime : Colors.transparent,
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: AppColors.lime.withValues(alpha: 0.45),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 76),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedScale(
+                scale: selected ? 1.06 : 1,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutBack,
+                child: SizedBox(
+                  width: _size,
+                  height: _size,
+                  child: Stack(
+                    children: [
+                      // Frosted glass base.
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: dark ? 0.45 : 0.14,
+                              ),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                            child: Container(
+                              width: _size,
+                              height: _size,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(
+                                    alpha: dark ? 0.14 : 0.85,
+                                  ),
+                                ),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: dark
+                                      ? [
+                                          const Color(
+                                            0xFF2E312A,
+                                          ).withValues(alpha: 0.78),
+                                          const Color(
+                                            0xFF151713,
+                                          ).withValues(alpha: 0.78),
+                                        ]
+                                      : [
+                                          Colors.white.withValues(alpha: 0.9),
+                                          const Color(
+                                            0xFFEFF2EA,
+                                          ).withValues(alpha: 0.75),
+                                        ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  selected ? item.activeIcon : item.icon,
-                  size: 22,
-                  color: fg,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    color: fg,
+                      // Lime fill that fades in when active.
+                      AnimatedOpacity(
+                        opacity: selected ? 1 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        child: Container(
+                          width: _size,
+                          height: _size,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.lime,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.lime.withValues(alpha: 0.55),
+                                blurRadius: 18,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Icon(
+                          selected ? item.activeIcon : item.icon,
+                          size: selected ? 26 : 24,
+                          color: selected ? AppColors.onLime : AppColors.inkSoft,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? AppColors.accent : AppColors.muted,
+                ),
+              ),
+            ],
           ),
         ),
       ),

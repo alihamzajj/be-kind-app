@@ -19,7 +19,7 @@ void main() {
     expect(find.text('Sign in or create account'), findsOneWidget);
   });
 
-  testWidgets('AppShell shows glass tab bar at 390px mobile width', (tester) async {
+  testWidgets('AppShell shows glass tab buttons at 390px mobile width', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -50,7 +50,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsWidgets);
     for (final label in ['Today', 'Progress', 'Friends', 'Profile']) {
       expect(find.bySemanticsLabel(label), findsOneWidget);
     }
