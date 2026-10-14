@@ -13,6 +13,9 @@ import 'package:be_kind/core/settings/app_settings.dart';
 import 'package:be_kind/core/widgets/motion.dart';
 import 'package:be_kind/core/voice/voice_greeting.dart';
 import 'package:be_kind/core/widgets/ui.dart';
+import 'package:be_kind/features/crew/controllers/crew_controller.dart';
+import 'package:be_kind/features/crew/models/crew_models.dart';
+import 'package:be_kind/features/crew/widgets/character_view.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -101,21 +104,48 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     final isCompletedToday = state.todayCompletion != null;
     final streakCount = state.streakResult.currentStreak;
 
+    final crew = ref.watch(crewProvider);
+    final buddy = ref.watch(selectedCharacterProvider);
+    final now = DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year)).inDays;
+    final buddyLine = buddy == null
+        ? null
+        : isCompletedToday
+        ? buddy.character.doneLine
+        : buddy.character.lines[dayOfYear % buddy.character.lines.length];
+
     final sections = <Widget>[
-      _Header(
-        date: formatShortDate(DateTime.now()),
-        greeting: '${_getGreeting()}, ${settings.displayName}',
-        subtitle: isCompletedToday
-            ? 'You made someone’s day a little brighter.'
-            : 'One small act of kindness is all it takes.',
-        initials: settings.initials,
-        onProfile: () => context.go('/profile'),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(
+            date: formatShortDate(now),
+            greeting: '${_getGreeting()}, ${settings.displayName}',
+            initials: settings.initials,
+            onAvatar: () => context.push('/crew'),
+          ),
+          if (buddy != null && buddyLine != null) ...[
+            const SizedBox(height: 12),
+            _SpeechBubble(
+              name: buddy.character.name,
+              text: buddyLine,
+              onTap: () => VoiceGreeting.instance.say(buddyLine),
+            ),
+          ],
+          if (crew.pendingReveals.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _SurpriseBanner(
+              count: crew.pendingReveals.length,
+              onTap: () => context.push('/crew/hatch'),
+            ),
+          ],
+        ],
       ),
 
       // Daily inspiration up top, right under the greeting.
       MotivationalQuoteCard(quote: _currentQuote, onRefresh: _refreshQuote),
 
-      // At-a-glance progress; both tiles open the Progress tab.
+      // Streak opens Progress; the egg opens My characters.
       IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,15 +156,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 onTap: () => context.go('/progress'),
               ),
             ),
-            if (state.badges.isNotEmpty) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: _BadgeTile(
-                  state: state,
-                  onTap: () => context.go('/progress'),
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _EggTile(
+                warmth: crew.eggWarmth,
+                onTap: () => context.push('/crew'),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -233,22 +261,20 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.date,
     required this.greeting,
-    required this.subtitle,
     required this.initials,
-    required this.onProfile,
+    required this.onAvatar,
   });
 
   final String date;
   final String greeting;
-  final String subtitle;
   final String initials;
-  final VoidCallback onProfile;
+  final VoidCallback onAvatar;
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 840;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -269,51 +295,142 @@ class _Header extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontSize: isDesktop ? 34 : 28, height: 1.12),
               ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 14.5, color: AppColors.inkSoft),
-              ),
             ],
           ),
         ),
         const SizedBox(width: 12),
-        _Avatar(initials: initials, onTap: onProfile),
+        Tooltip(
+          message: 'My characters',
+          child: CrewAvatar(
+            size: 58,
+            fallbackInitials: initials,
+            onTap: onAvatar,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initials, required this.onTap});
+/// What your character says today, pointing up at its avatar.
+class _SpeechBubble extends StatelessWidget {
+  const _SpeechBubble({
+    required this.name,
+    required this.text,
+    required this.onTap,
+  });
 
-  final String initials;
+  final String name;
+  final String text;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Profile',
-      child: Material(
-        color: AppColors.lime,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(
-            width: 46,
-            height: 46,
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.onLime,
-                  letterSpacing: -0.5,
-                ),
+    final radius = BorderRadius.circular(18);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          right: 22,
+          top: -6,
+          child: Transform.rotate(
+            angle: 0.785,
+            child: Container(width: 14, height: 14, color: AppColors.card),
+          ),
+        ),
+        Material(
+          color: AppColors.card,
+          borderRadius: radius,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '$name: ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          TextSpan(text: text),
+                        ],
+                      ),
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.35,
+                        color: AppColors.inkSoft,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.volume_up_rounded,
+                    size: 18,
+                    color: AppColors.muted,
+                  ),
+                ],
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown when a hatched or earned character is waiting to be met.
+class _SurpriseBanner extends StatelessWidget {
+  const _SurpriseBanner({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(20);
+    return Material(
+      color: const Color(0xFF26215C),
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+          child: Row(
+            children: [
+              const EggView(warmth: CrewState.eggSize - 1, size: 48),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      count == 1
+                          ? 'Someone new is waiting to meet you!'
+                          : '$count new friends are waiting!',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Tap to hatch',
+                      style: TextStyle(fontSize: 13, color: Color(0xFFCECBF6)),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: AppColors.lime),
+            ],
           ),
         ),
       ),
@@ -742,57 +859,47 @@ class _StreakTile extends StatelessWidget {
   }
 }
 
-class _BadgeTile extends StatelessWidget {
-  const _BadgeTile({required this.state, required this.onTap});
+class _EggTile extends StatelessWidget {
+  const _EggTile({required this.warmth, required this.onTap});
 
-  final DailyState state;
+  final int warmth;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final badges = state.badges;
-    final next = badges.where((b) => !b.isEarned).firstOrNull;
-    final earned = badges.where((b) => b.isEarned).length;
-
-    final String value;
-    final String label;
-    final double ratio;
-    if (next == null) {
-      value = '$earned/${badges.length}';
-      label = 'All badges earned';
-      ratio = 1;
-    } else {
-      final target = next.definition.targetCount;
-      value = '${next.currentProgress.clamp(0, target)}/$target';
-      label = 'Next: ${next.definition.name}';
-      ratio = (next.currentProgress / target).clamp(0.0, 1.0);
-    }
-
+    final left = CrewState.eggSize - warmth;
     return _StatTile(
       onTap: onTap,
       leading: Container(
         width: 38,
         height: 38,
-        decoration: BoxDecoration(
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.accentSoft,
+          color: Color(0xFFEEEDFE),
         ),
-        child: Icon(
-          next?.definition.icon ?? Icons.military_tech,
-          size: 20,
-          color: AppColors.accent,
-        ),
+        child: EggView(warmth: warmth, size: 30),
       ),
-      value: value,
-      label: label,
-      footer: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: LinearProgressIndicator(
-          value: ratio,
-          minHeight: 6,
-          backgroundColor: AppColors.surface,
-          valueColor: AlwaysStoppedAnimation(AppColors.positive),
-        ),
+      value: '$warmth/${CrewState.eggSize}',
+      label: left == 1 ? 'Egg hatches next act!' : 'Egg hatches in $left acts',
+      footer: Row(
+        children: [
+          for (var i = 0; i < CrewState.eggSize; i++)
+            Expanded(
+              child: Container(
+                height: 6,
+                margin: EdgeInsets.only(
+                  right: i < CrewState.eggSize - 1 ? 3 : 0,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: i < warmth
+                      ? const Color(0xFF7F77DD)
+                      : AppColors.surface,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

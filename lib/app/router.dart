@@ -14,6 +14,8 @@ import '../features/friends/friends_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/auth/auth_screen.dart';
 import '../features/kindness_tasks/models/kindness_task.dart';
+import '../features/crew/crew_screen.dart';
+import '../features/crew/hatch_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -46,6 +48,20 @@ final GoRouter appRouter = GoRouter(
       path: '/auth',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AuthScreen(),
+    ),
+    GoRoute(
+      path: '/crew',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CrewScreen(),
+    ),
+    GoRoute(
+      path: '/crew/hatch',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => CustomTransitionPage(
+        child: const HatchScreen(),
+        transitionsBuilder: (context, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
     ),
     GoRoute(
       path: '/history',

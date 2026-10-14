@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/widgets/ui.dart';
 import '../achievements/models/badge_models.dart';
+import '../crew/controllers/crew_controller.dart';
+import '../crew/models/crew_models.dart';
+import '../crew/widgets/character_view.dart';
 import '../home/controllers/daily_controller.dart';
 import '../kindness_tasks/models/kindness_task.dart';
 import 'widgets/celebration_view.dart';
@@ -69,6 +72,8 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
         return;
       }
       final after = ref.read(dailyNotifierProvider);
+      await ref.read(crewProvider.notifier).sync(after);
+      if (!mounted) return;
       final newlyEarned = after.badges
           .where((b) => b.isEarned && !earnedBefore.contains(b.definition.id))
           .map((b) => b.definition)
@@ -93,6 +98,8 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
     final celebration = _celebration;
 
     if (celebration != null) {
+      final crew = ref.watch(crewProvider);
+      final surprise = crew.pendingReveals.isNotEmpty;
       return Scaffold(
         backgroundColor: AppColors.ground,
         body: SafeArea(
@@ -103,7 +110,10 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
                 streak: celebration.streak,
                 taskTitle: widget.task?.title ?? 'You did a kind act today.',
                 newBadge: celebration.badge,
-                onContinue: () => context.go('/today'),
+                extra: _EggProgress(crew: crew),
+                continueLabel: surprise ? 'Hatch my egg!' : 'Continue',
+                onContinue: () =>
+                    context.go(surprise ? '/crew/hatch' : '/today'),
                 onShare: widget.task == null
                     ? null
                     : () => showShareCardSheet(
@@ -316,6 +326,62 @@ class _TaskCompletedScreenState extends ConsumerState<TaskCompletedScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// How the egg reacted to this kind act.
+class _EggProgress extends StatelessWidget {
+  const _EggProgress({required this.crew});
+
+  final CrewState crew;
+
+  @override
+  Widget build(BuildContext context) {
+    final hatching = crew.pendingReveals.isNotEmpty;
+    final warmth = hatching ? CrewState.eggSize - 1 : crew.eggWarmth;
+    final left = crew.actsToHatch;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
+      decoration: BoxDecoration(
+        color: hatching ? const Color(0xFF26215C) : AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          EggView(warmth: warmth, size: 50),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hatching ? 'Your egg is cracking!' : 'Your egg got warmer',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: hatching ? Colors.white : AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hatching
+                      ? 'Someone wants to meet you.'
+                      : '${crew.eggWarmth}/${CrewState.eggSize} warm · '
+                            'hatches in $left more '
+                            '${left == 1 ? 'act' : 'acts'}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: hatching
+                        ? const Color(0xFFCECBF6)
+                        : AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

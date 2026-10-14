@@ -15,6 +15,8 @@ class CelebrationView extends StatefulWidget {
     required this.onContinue,
     this.newBadge,
     this.onShare,
+    this.extra,
+    this.continueLabel = 'Continue',
     super.key,
   });
 
@@ -23,6 +25,10 @@ class CelebrationView extends StatefulWidget {
   final BadgeDefinition? newBadge;
   final VoidCallback onContinue;
   final VoidCallback? onShare;
+
+  /// Shown above the buttons, e.g. how warm the egg got.
+  final Widget? extra;
+  final String continueLabel;
 
   @override
   State<CelebrationView> createState() => _CelebrationViewState();
@@ -221,6 +227,10 @@ class _CelebrationViewState extends State<CelebrationView>
                     ),
                   ),
                 ),
+              if (widget.extra != null) ...[
+                const SizedBox(height: 12),
+                FadeTransition(opacity: fade, child: widget.extra!),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -237,7 +247,7 @@ class _CelebrationViewState extends State<CelebrationView>
                     flex: 2,
                     child: FilledButton(
                       onPressed: widget.onContinue,
-                      child: const Text('Continue'),
+                      child: Text(widget.continueLabel),
                     ),
                   ),
                 ],

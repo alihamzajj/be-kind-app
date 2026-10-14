@@ -25,6 +25,8 @@ void main() {
     '/history',
     '/reminders',
     '/today/done',
+    '/crew',
+    '/crew/hatch',
   ];
 
   for (final dark in [false, true]) {

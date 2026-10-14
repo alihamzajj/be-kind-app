@@ -6,6 +6,10 @@ import '../../app/theme/app_colors.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/storage/supabase_sync_service.dart';
 import '../../core/voice/voice_greeting.dart';
+import '../crew/controllers/crew_controller.dart';
+import '../crew/data/crew_roster.dart';
+import '../crew/models/crew_models.dart';
+import '../crew/widgets/character_view.dart';
 import '../../core/widgets/ui.dart';
 import '../home/controllers/daily_controller.dart';
 import 'reminder_settings_screen.dart';
@@ -139,6 +143,7 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dailyNotifierProvider);
     final settings = ref.watch(settingsProvider);
+    final crew = ref.watch(crewProvider);
     final currentUser = SupabaseSyncService.currentUser;
     final isOnline = currentUser != null;
 
@@ -166,24 +171,10 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      width: 88,
-                      height: 88,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surface,
-                        border: Border.all(color: AppColors.lineStrong),
-                      ),
-                      child: Text(
-                        settings.initials,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
-                          color: AppColors.ink,
-                        ),
-                      ),
+                    CrewAvatar(
+                      size: 104,
+                      fallbackInitials: settings.initials,
+                      onTap: () => context.push('/crew'),
                     ),
                     const SizedBox(height: 14),
                     Text(
@@ -255,6 +246,15 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
               const SizedBox(height: 28),
               const SectionHeader(title: 'Your activity'),
               const SizedBox(height: 4),
+              ActivityRow(
+                icon: Icons.pets_outlined,
+                title: 'My characters',
+                subtitle:
+                    '${crew.owned.length} of ${kCrew.length} found · '
+                    'egg ${crew.eggWarmth}/${CrewState.eggSize} warm',
+                trailingIcon: Icons.chevron_right,
+                onTap: () => context.push('/crew'),
+              ),
               ActivityRow(
                 icon: Icons.calendar_today_outlined,
                 title: 'Kindness history',
