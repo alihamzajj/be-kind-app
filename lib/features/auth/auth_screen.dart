@@ -8,6 +8,8 @@ import '../../core/config/supabase_config.dart';
 import '../../core/storage/supabase_sync_service.dart';
 import '../home/controllers/daily_controller.dart';
 
+enum AuthMode { signIn, signUp, forgotPassword }
+
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
@@ -20,9 +22,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
 
-  bool _isSignUp = false;
+  AuthMode _mode = AuthMode.signIn;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _successMessage;
 
   @override
   void dispose() {
@@ -37,16 +40,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final password = _passwordController.text;
     final name = _nameController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || (_isSignUp && name.isEmpty)) {
+    if (_mode == AuthMode.forgotPassword) {
+      await _sendPasswordReset();
+      return;
+    }
+
+    if (email.isEmpty || password.isEmpty || (_mode == AuthMode.signUp && name.isEmpty)) {
       setState(() {
         _errorMessage = 'Please fill out all required fields.';
+        _successMessage = null;
       });
       return;
     }
 
     if (!SupabaseConfig.isConfigured) {
       setState(() {
-        _errorMessage = 'Supabase credentials are not configured yet.\nAdd SUPABASE_URL and SUPABASE_ANON_KEY to run with real backend.';
+        _errorMessage = 'Supabase credentials are not configured.';
+        _successMessage = null;
       });
       return;
     }
@@ -54,11 +64,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _successMessage = null;
     });
 
     try {
       final client = Supabase.instance.client;
-      if (_isSignUp) {
+      if (_mode == AuthMode.signUp) {
         final res = await client.auth.signUp(
           email: email,
           password: password,
@@ -104,11 +115,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
-  Future<void> _forgotPassword() async {
+  Future<void> _sendPasswordReset() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter your email address to reset password.';
+        _errorMessage = 'Please enter your email address.';
+        _successMessage = null;
       });
       return;
     }
@@ -116,6 +128,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (!SupabaseConfig.isConfigured) {
       setState(() {
         _errorMessage = 'Supabase credentials are not configured.';
+        _successMessage = null;
       });
       return;
     }
@@ -123,26 +136,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _successMessage = null;
     });
 
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(email);
       if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Password Reset Sent'),
-            content: Text(
-              'A password reset link has been sent to $email.\n\nCheck your inbox and follow the link to reset your password.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        setState(() {
+          _successMessage = 'Password reset link sent to $email!\nCheck your inbox to create a new password.';
+        });
       }
     } on AuthException catch (e) {
       setState(() {
@@ -150,7 +152,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Could not send reset email: $e';
+        _errorMessage = 'Could not send reset link: $e';
       });
     } finally {
       if (mounted) {
@@ -175,18 +177,60 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
+  String get _title {
+    switch (_mode) {
+      case AuthMode.signUp:
+        return 'Create an Account';
+      case AuthMode.forgotPassword:
+        return 'Reset Password';
+      case AuthMode.signIn:
+        return 'Sign In';
+    }
+  }
+
+  String get _headline {
+    switch (_mode) {
+      case AuthMode.signUp:
+        return 'Keep your kindness streak backed up';
+      case AuthMode.forgotPassword:
+        return 'Forgot your password?';
+      case AuthMode.signIn:
+        return 'Welcome back to Be Kind';
+    }
+  }
+
+  String get _subtitle {
+    switch (_mode) {
+      case AuthMode.signUp:
+      case AuthMode.signIn:
+        return 'Sync your streaks, unlocked badges, and personal reflections across all your devices.';
+      case AuthMode.forgotPassword:
+        return 'Enter your email address and we will send you a secure link to reset your password.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isSignUp ? 'Create an Account' : 'Sign In'),
+        title: Text(_title),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (_mode == AuthMode.forgotPassword) {
+              setState(() {
+                _mode = AuthMode.signIn;
+                _errorMessage = null;
+                _successMessage = null;
+              });
+            } else {
+              context.pop();
+            }
+          },
         ),
       ),
       body: SafeArea(
@@ -197,21 +241,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             children: [
               const SizedBox(height: 12),
               Text(
-                _isSignUp
-                    ? 'Keep your kindness streak backed up'
-                    : 'Welcome back to Be Kind',
+                _headline,
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
               Text(
-                'Sync your streaks, unlocked badges, and personal reflections across all your devices.',
+                _subtitle,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.inkSoft,
                 ),
               ),
               const SizedBox(height: 28),
 
-              if (_isSignUp) ...[
+              if (_mode == AuthMode.signUp) ...[
                 TextField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
@@ -234,36 +276,46 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
               const SizedBox(height: 16),
 
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline),
+              // Hide password input completely when resetting password
+              if (_mode != AuthMode.forgotPassword) ...[
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
                 ),
-              ),
-
-              if (!_isSignUp) ...[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _isLoading ? null : _forgotPassword,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    child: Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.inkSoft,
+                if (_mode == AuthMode.signIn) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              setState(() {
+                                _mode = AuthMode.forgotPassword;
+                                _errorMessage = null;
+                                _successMessage = null;
+                              });
+                            },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.inkSoft,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ] else
-                const SizedBox(height: 20),
+                ] else
+                  const SizedBox(height: 20),
+              ],
 
               if (_errorMessage != null) ...[
                 Container(
@@ -286,6 +338,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 const SizedBox(height: 16),
               ],
 
+              if (_successMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Text(
+                    _successMessage!,
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               FilledButton(
                 onPressed: _isLoading ? null : _submit,
                 child: _isLoading
@@ -297,24 +371,43 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : Text(_isSignUp ? 'Create Account' : 'Sign In'),
+                    : Text(
+                        _mode == AuthMode.signUp
+                            ? 'Create Account'
+                            : (_mode == AuthMode.forgotPassword
+                                ? 'Send Reset Link'
+                                : 'Sign In'),
+                      ),
               ),
               const SizedBox(height: 16),
 
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isSignUp = !_isSignUp;
-                    _errorMessage = null;
-                  });
-                },
-                child: Text(
-                  _isSignUp
-                      ? 'Already have an account? Sign in'
-                      : 'New here? Create an account',
-                  style: TextStyle(color: AppColors.accent),
+              if (_mode == AuthMode.forgotPassword)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _mode = AuthMode.signIn;
+                      _errorMessage = null;
+                      _successMessage = null;
+                    });
+                  },
+                  child: const Text('Back to Sign In'),
+                )
+              else
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _mode = _mode == AuthMode.signUp ? AuthMode.signIn : AuthMode.signUp;
+                      _errorMessage = null;
+                      _successMessage = null;
+                    });
+                  },
+                  child: Text(
+                    _mode == AuthMode.signUp
+                        ? 'Already have an account? Sign in'
+                        : 'New here? Create an account',
+                    style: TextStyle(color: AppColors.accent),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
