@@ -14,38 +14,39 @@ class ProfilePlaceholderScreen extends ConsumerWidget {
   const ProfilePlaceholderScreen({super.key});
 
   Future<void> _editName(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController(
-      text: ref.read(settingsProvider).name ?? '',
-    );
+    final initialName = ref.read(settingsProvider).name ?? '';
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Your name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 30,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'First name',
-            counterText: '',
+      builder: (ctx) {
+        final controller = TextEditingController(text: initialName);
+        return AlertDialog(
+          title: const Text('Your name'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 30,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'First name',
+              counterText: '',
+            ),
+            onSubmitted: (v) => Navigator.of(ctx).pop(v),
           ),
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(controller.text),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
-    controller.dispose();
-    if (result == null) return;
+
+    if (result == null || !context.mounted) return;
     final name = result.trim();
     await ref
         .read(settingsProvider.notifier)
